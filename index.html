@@ -3,28 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>常識問答比賽系統 - 專業輕量版</title>
+    <title>常識問答比賽系統 - 導播終極版</title>
     <style>
         :root {
             --setup-color: #f39c12; --admin-color: #2980b9; --game-color: #27ae60;
             --bg: #f5f6fa; --dark: #2f3640; --error: #c23616; --success: #44bd32; --gold: #f1c40f;
         }
-        body { font-family: 'PingFang HK', 'Microsoft JhengHei', sans-serif; margin: 0; background: var(--bg); color: var(--dark); overflow-x: hidden; }
+        body { font-family: 'PingFang HK', 'Microsoft JhengHei', sans-serif; margin: 0; background: var(--bg); color: var(--dark); overflow: hidden; }
         
-        .tabs { display: flex; box-shadow: 0 2px 10px rgba(0,0,0,0.2); position: sticky; top: 0; z-index: 100; }
-        .tab-btn { flex: 1; padding: 18px; border: none; color: white; cursor: pointer; font-size: 16px; opacity: 0.7; transition: 0.3s; }
-        .tab-btn.active { opacity: 1; font-weight: bold; font-size: 18px; }
-        .tab-setup { background: var(--setup-color); }
-        .tab-admin { background: var(--admin-color); }
-        .tab-game { background: var(--game-color); }
-
-        .content-section { display: none; padding: 25px; max-width: 1200px; margin: auto; padding-bottom: 120px; }
+        .content-section { display: none; padding: 20px; max-width: 1200px; margin: auto; height: calc(100vh - 100px); overflow-y: auto; }
         .content-section.active { display: block; }
 
         .admin-box { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; }
         input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
         
-        /* 題目管理 UI - 垂直輸入 A-D */
+        /* 題目管理 UI */
         .mc-input-group { display: flex; flex-direction: column; gap: 15px; margin-top: 10px; }
         .mc-input-item { display: flex; align-items: center; gap: 15px; background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
         .mc-input-item input[type="text"] { margin: 0; flex: 1; border-color: #ddd; }
@@ -33,7 +26,7 @@
         /* 隊伍卡片 */
         .scoreboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
         .team-card { 
-            height: 100px; border-radius: 12px; position: relative; overflow: hidden; 
+            height: 90px; border-radius: 12px; position: relative; overflow: hidden; 
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.8); border: 4px solid transparent;
             background-size: cover; background-position: center; background-color: #718093;
@@ -43,13 +36,18 @@
         .foul-active { border-color: var(--error) !important; animation: blink-red 0.6s infinite; z-index: 5; }
         @keyframes blink-gold { 0%, 100% { box-shadow: 0 0 5px var(--gold); } 50% { box-shadow: 0 0 30px var(--gold); } }
         @keyframes blink-red { 0%, 100% { box-shadow: 0 0 5px var(--error); background: var(--error); } 50% { box-shadow: 0 0 30px var(--error); background: #822701; } }
-
         .team-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); z-index: 1; }
         .team-content { z-index: 2; text-align: center; }
-        .score { font-size: 30px; font-weight: bold; }
+        .score { font-size: 28px; font-weight: bold; }
 
-        /* 題目顯示 */
-        .display-area { background: white; border-radius: 20px; padding: 40px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); min-height: 380px; }
+        /* 題目顯示區域 - 支援動態背景 */
+        .display-area { 
+            background: white; border-radius: 20px; padding: 40px; text-align: center; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); min-height: 350px; 
+            background-size: cover; background-position: center; transition: 0.5s; position: relative;
+        }
+        .display-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.85); border-radius: 20px; display: none; }
+        .display-content { position: relative; z-index: 2; }
         .q-text { font-size: 38px; font-weight: bold; margin: 25px 0; line-height: 1.3; }
         .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 900px; margin: auto; }
         .opt-btn { background: #f1f2f6; border: 2px solid #dcdde1; padding: 22px; font-size: 24px; border-radius: 12px; cursor: pointer; }
@@ -57,10 +55,23 @@
         .opt-btn.wrong { background: var(--error) !important; color: white; }
         .options-grid.locked { pointer-events: none; }
 
-        /* 底部控制列 */
-        .controls { position: fixed; bottom: 0; width: 100%; background: #2f3640; padding: 15px; display: flex; justify-content: center; align-items: center; gap: 10px; z-index: 200; }
-        .ctrl-btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; color: white; background: #718093; font-weight: bold; }
-        .score-input { width: 70px !important; padding: 10px !important; margin: 0 !important; text-align: center; font-weight: bold; }
+        /* 底部控制列整合導航 */
+        .controls { 
+            position: fixed; bottom: 0; width: 100%; background: #2f3640; padding: 12px; 
+            display: flex; justify-content: space-between; align-items: center; z-index: 200; 
+        }
+        .nav-group { display: flex; gap: 5px; flex: 1; }
+        .control-group { display: flex; gap: 8px; align-items: center; flex: 2; justify-content: flex-end; }
+        
+        /* 縮小後的導航按鈕 */
+        .nav-btn { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; color: white; font-size: 13px; opacity: 0.6; transition: 0.3s; }
+        .nav-btn.active { opacity: 1; font-weight: bold; transform: translateY(-2px); }
+        .tab-setup { background: var(--setup-color); }
+        .tab-admin { background: var(--admin-color); }
+        .tab-game { background: var(--game-color); }
+
+        .ctrl-btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; color: white; background: #718093; font-weight: bold; font-size: 14px; }
+        .score-input { width: 60px !important; padding: 8px !important; margin: 0 !important; text-align: center; font-weight: bold; }
 
         #buzzer-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 999; display: none;
@@ -70,87 +81,84 @@
 </head>
 <body>
 
-<div class="tabs">
-    <button class="tab-btn tab-setup" onclick="showTab('setup')">1. 隊伍與音效設定</button>
-    <button class="tab-btn tab-admin" onclick="showTab('admin')">2. 題目管理</button>
-    <button class="tab-btn tab-game active" onclick="showTab('game')">3. 比賽介面</button>
-</div>
-
 <div id="setup" class="content-section">
     <div class="admin-box">
-        <h2>參賽隊伍與音效</h2>
+        <h2>參賽隊伍與音效設定</h2>
         <div id="team-setup-ui" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;"></div>
-        
-        <div style="margin-top:30px; padding:20px; background:#f0f4f8; border-radius:12px;">
-            <h3>賽事音效 (正確/錯誤)</h3>
+        <div style="margin-top:20px; padding:15px; background:#f0f4f8; border-radius:12px;">
+            <h3>賽事音效</h3>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px;">
-                <div><label>🟢 答對加分音效</label><input type="file" accept="audio/*" onchange="loadAudio(event, 'correct')"></div>
-                <div><label>🔴 答錯扣分音效</label><input type="file" accept="audio/*" onchange="loadAudio(event, 'wrong')"></div>
+                <div><label>🟢 正確音效</label><input type="file" accept="audio/*" onchange="loadAudio(event, 'correct')"></div>
+                <div><label>🔴 錯誤音效</label><input type="file" accept="audio/*" onchange="loadAudio(event, 'wrong')"></div>
             </div>
         </div>
-        <button class="ctrl-btn tab-game" style="width:100%; margin-top:30px; height:60px; font-size:20px; background:var(--game-color)" onclick="saveState(); alert('數據已保存')">儲存進度並刷新</button>
+        <button class="ctrl-btn" style="width:100%; margin-top:20px; height:50px; background:var(--game-color)" onclick="saveState(); alert('設定已儲存')">儲存設定</button>
     </div>
 </div>
 
 <div id="admin" class="content-section">
     <div class="admin-box">
-        <div style="display:flex; gap:15px; margin-bottom:20px;">
-            <button class="ctrl-btn" style="background:var(--admin-color); flex:1" onclick="downloadQsOnly()">⬇️ 僅匯出題目備份</button>
-            <button class="ctrl-btn" style="background:#8e44ad; flex:1" onclick="document.getElementById('file-in').click()">⬆️ 匯入題目檔案</button>
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <button class="ctrl-btn" style="background:var(--admin-color); flex:1" onclick="downloadQsOnly()">⬇️ 匯出題目 (.json)</button>
+            <button class="ctrl-btn" style="background:#8e44ad; flex:1" onclick="document.getElementById('file-in').click()">⬆️ 匯入題目</button>
             <input type="file" id="file-in" style="display:none" onchange="uploadQs(event)">
         </div>
         <hr>
         <h3>新增題目</h3>
         <div style="display:grid; grid-template-columns: 1.5fr 1fr 1fr; gap:15px;">
-            <div><label>題型</label><select id="q-type" onchange="updateUI()"><option value="MC">多項選擇題 (MC)</option><option value="Short">短答 / 必答題</option></select></div>
+            <div><label>題型</label><select id="q-type" onchange="updateUI()"><option value="MC">選擇題 (MC)</option><option value="Short">短答 / 必答</option></select></div>
             <div><label style="color:var(--success)">✅ 答對分數</label><input type="number" id="pts-win" value="10"></div>
             <div><label style="color:var(--error)">❌ 答錯扣分</label><input type="number" id="pts-lose" value="5"></div>
         </div>
-        <textarea id="q-text" placeholder="在此輸入題目內容..." rows="4"></textarea>
-        
+        <textarea id="q-text" placeholder="輸入題目內容..." rows="3"></textarea>
         <div id="mc-area" class="mc-input-group">
-            <div class="mc-input-item"><span>A</span><input type="text" id="oa" placeholder="選項 A"> <input type="radio" name="correct" value="A" class="correct-radio" checked>正確答案</div>
-            <div class="mc-input-item"><span>B</span><input type="text" id="ob" placeholder="選項 B"> <input type="radio" name="correct" value="B" class="correct-radio">正確答案</div>
-            <div class="mc-input-item"><span>C</span><input type="text" id="oc" placeholder="選項 C"> <input type="radio" name="correct" value="C" class="correct-radio">正確答案</div>
-            <div class="mc-input-item"><span>D</span><input type="text" id="od" placeholder="選項 D"> <input type="radio" name="correct" value="D" class="correct-radio">正確答案</div>
+            <div class="mc-input-item"><span>A</span><input type="text" id="oa"> <input type="radio" name="correct" value="A" class="correct-radio" checked></div>
+            <div class="mc-input-item"><span>B</span><input type="text" id="ob"> <input type="radio" name="correct" value="B" class="correct-radio"></div>
+            <div class="mc-input-item"><span>C</span><input type="text" id="oc"> <input type="radio" name="correct" value="C" class="correct-radio"></div>
+            <div class="mc-input-item"><span>D</span><input type="text" id="od"> <input type="radio" name="correct" value="D" class="correct-radio"></div>
         </div>
-        <div id="short-area" style="display:none"><input type="text" id="ans-val" placeholder="輸入正確答案文字"></div>
-        <button class="ctrl-btn tab-admin" style="width:100%; margin-top:20px; background:var(--admin-color)" onclick="addQ()">儲存題目</button>
+        <div id="short-area" style="display:none"><input type="text" id="ans-val" placeholder="正確答案文字"></div>
+        <button class="ctrl-btn" style="width:100%; margin-top:15px; background:var(--admin-color)" onclick="addQ()">儲存題目</button>
     </div>
-    <div class="admin-box">
-        <h3>題目清單</h3>
-        <div id="q-list"></div>
-    </div>
+    <div class="admin-box"><h3>題目清單</h3><div id="q-list"></div></div>
 </div>
 
 <div id="game" class="content-section active">
     <div class="scoreboard" id="game-sb"></div>
-
-    <div class="display-area">
-        <div id="g-badge" style="background:var(--admin-color); color:white; padding:6px 18px; border-radius:20px; font-size:15px; display:inline-block">準備比賽</div>
-        <div id="g-text" class="q-text">請點擊「下一題」開始</div>
-        <div id="g-opts" class="options-grid"></div>
-        <div id="g-res" style="margin-top:20px; font-size:28px; color:var(--success); font-weight:bold; display:none"></div>
+    <div class="display-area" id="main-display">
+        <div class="display-overlay" id="main-overlay"></div>
+        <div class="display-content">
+            <div id="g-badge" style="background:var(--admin-color); color:white; padding:5px 15px; border-radius:20px; font-size:14px; display:inline-block">準備比賽</div>
+            <div id="g-text" class="q-text">請點擊「下一題」開始</div>
+            <div id="g-opts" class="options-grid"></div>
+            <div id="g-res" style="margin-top:20px; font-size:26px; color:var(--success); font-weight:bold; display:none"></div>
+        </div>
     </div>
+</div>
 
-    <div class="controls">
-        <button class="ctrl-btn" onclick="navQ(-1)">上一題</button>
-        <button class="ctrl-btn" onclick="navQ(1)">下一題</button>
-        <button class="ctrl-btn" style="background:#34495e" onclick="showAnswer()">答案制 (Show)</button>
-        <div style="border-left:1px solid #555; height:30px; margin:0 10px;"></div>
-        <button class="ctrl-btn" id="btn-buzzer" style="background:var(--success)" onclick="toggleBuzzer()">開啟搶答</button>
-        <button class="ctrl-btn" id="btn-comp" style="background:#e67e22" onclick="toggleComp()">必答模式</button>
-        <select id="sel-team" style="width:120px; margin:0;" onchange="manuallySelect()"><option value="">選擇隊伍...</option><option value="0">T1</option><option value="1">T2</option><option value="2">T3</option><option value="3">T4</option></select>
-        <button class="ctrl-btn" onclick="resetRound()">重置 (Space)</button>
-        <div style="border-left:1px solid #555; height:30px; margin:0 10px;"></div>
+<div class="controls">
+    <div class="nav-group">
+        <button class="nav-btn tab-setup" onclick="showTab('setup')">隊伍設定</button>
+        <button class="nav-btn tab-admin" onclick="showTab('admin')">題目管理</button>
+        <button class="nav-btn tab-game active" onclick="showTab('game')">比賽介面</button>
+    </div>
+    <div class="control-group">
+        <button class="ctrl-btn" onclick="navQ(-1)">上題</button>
+        <button class="ctrl-btn" onclick="navQ(1)">下題</button>
+        <button class="ctrl-btn" style="background:#34495e" onclick="showAnswer()">答案</button>
+        <div style="border-left:1px solid #555; height:25px;"></div>
+        <button class="ctrl-btn" id="btn-buzzer" style="background:var(--success)" onclick="toggleBuzzer()">搶答</button>
+        <button class="ctrl-btn" id="btn-comp" style="background:#e67e22" onclick="toggleComp()">必答</button>
+        <select id="sel-team" style="width:100px; margin:0; height:35px;" onchange="manuallySelect()"><option value="">選擇隊伍</option><option value="0">T1</option><option value="1">T2</option><option value="2">T3</option><option value="3">T4</option></select>
+        <button class="ctrl-btn" onclick="resetRound()">重置</button>
         <input type="number" id="pts-box" class="score-input" value="10">
-        <button class="ctrl-btn" style="background:var(--error)" onclick="manualAdj(false)">扣分 -</button>
-        <button class="ctrl-btn" style="background:var(--success)" onclick="manualAdj(true)">加分 +</button>
+        <button class="ctrl-btn" style="background:var(--error)" onclick="manualAdj(false)">-</button>
+        <button class="ctrl-btn" style="background:var(--success)" onclick="manualAdj(true)">+</button>
     </div>
 </div>
 
 <div id="buzzer-overlay" onclick="closeOverlay()">
-    <div class="win-text" id="win-name" style="font-size:90px; font-weight:900; color:var(--gold);">TEAM</div>
+    <div id="win-name" style="font-size:80px; font-weight:900; color:var(--gold);">TEAM</div>
     <div style="font-size: 28px;">搶答成功！請發言</div>
 </div>
 
@@ -177,13 +185,13 @@
     }
 
     function showTab(t) {
-        document.querySelectorAll('.content-section, .tab-btn').forEach(e => e.classList.remove('active'));
+        document.querySelectorAll('.content-section, .nav-btn').forEach(e => e.classList.remove('active'));
         document.getElementById(t).classList.add('active');
         document.querySelector(`.tab-${t}`).classList.add('active');
         if(t === 'game') renderGame();
     }
 
-    // --- 改進的圖片處理：Canvas 壓縮 ---
+    // --- 圖像壓縮處理 ---
     function upImg(e, i) {
         const file = e.target.files[0];
         if (!file) return;
@@ -192,46 +200,26 @@
             const img = new Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 600; // 壓縮至最大 600px 寬度，確保流暢
-                let width = img.width;
-                let height = img.height;
-                if (width > MAX_WIDTH) {
-                    height *= MAX_WIDTH / width;
-                    width = MAX_WIDTH;
-                }
-                canvas.width = width;
-                canvas.height = height;
+                const MAX_WIDTH = 600;
+                let width = img.width, height = img.height;
+                if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                // 轉為 Base64 並儲存 (JPEG 格式進一步縮小體積)
                 teams[i].bg = canvas.toDataURL('image/jpeg', 0.8);
-                saveState();
-                renderSetup();
+                saveState(); renderSetup();
             };
             img.src = ev.target.result;
         };
         reader.readAsDataURL(file);
     }
 
-    // --- 匯出功能：僅題目與分值 (修正點 1) ---
     function downloadQsOnly() {
-        const exportQs = questions.map(q => ({
-            type: q.type,
-            ptsWin: q.ptsWin,   // 正確增加分值
-            ptsLose: q.ptsLose, // 扣除分值
-            text: q.text,
-            ans: q.ans,
-            fullAns: q.fullAns,
-            opts: q.opts
-        }));
+        const exportQs = questions.map(q => ({ type: q.type, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts }));
         const blob = new Blob([JSON.stringify(exportQs, null, 2)], {type:'application/json'});
-        const a = document.createElement('a'); 
-        a.href = URL.createObjectURL(blob); 
-        a.download='competition_questions.json'; 
-        a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_questions.json'; a.click();
     }
 
-    // --- 其餘系統功能 ---
     function loadAudio(e, type) {
         const reader = new FileReader();
         reader.onload = (ev) => { audioData[type] = ev.target.result; saveState(); };
@@ -240,9 +228,8 @@
     function playSfx(type) { if(audioData[type]) new Audio(audioData[type]).play(); }
 
     function updateUI() {
-        const isMC = document.getElementById('q-type').value === 'MC';
-        document.getElementById('mc-area').style.display = isMC ? 'block' : 'none';
-        document.getElementById('short-area').style.display = isMC ? 'none' : 'block';
+        document.getElementById('mc-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'block' : 'none';
+        document.getElementById('short-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'none' : 'block';
     }
 
     function addQ() {
@@ -265,30 +252,18 @@
     function renderAdmin() {
         const list = document.getElementById('q-list');
         list.innerHTML = questions.map((q, i) => `
-            <div class="q-item" draggable="true" ondragstart="dS(${i})" ondragover="dO(event)" ondrop="dD(${i})" style="background:#fff; border:1px solid #eee; padding:15px; margin-bottom:10px; border-radius:8px">
+            <div class="admin-box" style="padding:15px; margin-bottom:10px">
                 <div style="display:flex; justify-content:space-between"><b>題 ${i+1} [+${q.ptsWin}/-${q.ptsLose}]</b> <button onclick="delQ(${i})" style="color:red">刪除</button></div>
-                <div>${q.text}</div>
-                <div style="color:var(--success); font-weight:bold">答案: ${q.fullAns}</div>
+                <div>${q.text}</div><div style="color:var(--success); font-weight:bold">答案: ${q.fullAns}</div>
             </div>`).join('');
     }
-    let dIdx; function dS(i){dIdx=i;} function dO(e){e.preventDefault();} 
-    function dD(i){const m=questions.splice(dIdx,1)[0]; questions.splice(i,0,m); saveState(); renderAdmin();}
     function delQ(i){questions.splice(i,1); saveState(); renderAdmin();}
 
     function renderGame() {
         const sb = document.getElementById('game-sb');
         sb.innerHTML = teams.map((t, i) => {
-            let cls = "";
-            if (winnerIdx === i) cls = "winner-active";
-            if (foulStatus[i] > 0) cls = "foul-active";
-            return `
-            <div class="team-card ${cls}" id="card-${i}" style="background-image:url('${t.bg}')">
-                <div class="team-overlay"></div>
-                <div class="team-content">
-                    <div class="team-name">${t.name}</div>
-                    <div class="score">${t.score}</div>
-                </div>
-            </div>`;
+            let cls = (winnerIdx === i) ? "winner-active" : (foulStatus[i] > 0 ? "foul-active" : "");
+            return `<div class="team-card ${cls}" style="background-image:url('${t.bg}')"><div class="team-overlay"></div><div class="team-content"><div class="team-name">${t.name}</div><div class="score">${t.score}</div></div></div>`;
         }).join('');
     }
 
@@ -305,17 +280,14 @@
         const area = document.getElementById('g-opts');
         area.innerHTML = ''; area.classList.remove('locked');
         if(q.type === 'MC') {
-            ['A','B','C','D'].forEach((l, i) => {
-                area.innerHTML += `<button class="opt-btn" id="btn-${l}" onclick="processAns('${l}')">${l}. ${q.opts[i]}</button>`;
-            });
+            ['A','B','C','D'].forEach((l, i) => { area.innerHTML += `<button class="opt-btn" id="btn-${l}" onclick="processAns('${l}')">${l}. ${q.opts[i]}</button>`; });
         }
-        if(!compOn) winnerIdx = null;
+        if(!compOn) resetDisplayBG();
         renderGame(); saveState();
     }
 
     function showAnswer() {
-        const q = questions[curIdx];
-        document.getElementById('g-res').innerText = "答案: " + q.fullAns;
+        document.getElementById('g-res').innerText = "答案: " + questions[curIdx].fullAns;
         document.getElementById('g-res').style.display = 'block';
         showTime = true;
     }
@@ -324,43 +296,27 @@
         if(winnerIdx === null) { alert("請先選定答題隊伍！"); return; }
         if(answered) return;
         answered = true;
-        const q = questions[curIdx];
-        const ok = (sel === q.ans);
+        const q = questions[curIdx], ok = (sel === q.ans);
         document.getElementById('g-opts').classList.add('locked');
         document.querySelectorAll('.opt-btn').forEach(b => {
             const l = b.id.split('-')[1];
-            if(l === q.ans) b.classList.add('correct');
-            else if(l === sel) b.classList.add('wrong');
+            if(l === q.ans) b.classList.add('correct'); else if(l === sel) b.classList.add('wrong');
         });
         showAnswer();
-        autoScore(winnerIdx, ok);
-    }
-
-    function autoScore(idx, ok) {
-        const q = questions[curIdx];
-        teams[idx].score += (ok ? q.ptsWin : -q.ptsLose);
+        teams[winnerIdx].score += (ok ? q.ptsWin : -q.ptsLose);
         playSfx(ok ? 'correct' : 'wrong');
         renderGame(); saveState();
     }
 
     function manualAdj(plus) {
         if(winnerIdx === null) return;
-        const val = parseInt(document.getElementById('pts-box').value);
-        teams[winnerIdx].score += (plus ? val : -val);
+        teams[winnerIdx].score += (plus ? parseInt(document.getElementById('pts-box').value) : -parseInt(document.getElementById('pts-box').value));
         playSfx(plus ? 'correct' : 'wrong');
         renderGame(); saveState();
     }
 
-    function toggleBuzzer() {
-        compOn = false; buzzerOn = !buzzerOn;
-        if(buzzerOn) winnerIdx = null;
-        syncUI(); renderGame();
-    }
-    function toggleComp() {
-        buzzerOn = false; compOn = !compOn;
-        if(!compOn) winnerIdx = null;
-        syncUI(); renderGame();
-    }
+    function toggleBuzzer() { compOn = false; buzzerOn = !buzzerOn; if(buzzerOn) resetDisplayBG(); syncUI(); renderGame(); }
+    function toggleComp() { buzzerOn = false; compOn = !compOn; syncUI(); renderGame(); }
     function syncUI() {
         document.getElementById('btn-buzzer').style.background = buzzerOn ? "#c0392b" : "#27ae60";
         document.getElementById('btn-comp').style.background = compOn ? "#c0392b" : "#e67e22";
@@ -368,7 +324,26 @@
     function manuallySelect() {
         const v = document.getElementById('sel-team').value;
         winnerIdx = (v==="") ? null : parseInt(v);
+        if(winnerIdx !== null) updateDisplayBG(winnerIdx);
         renderGame();
+    }
+
+    // --- 背景動態更新邏輯 (修正點 1) ---
+    function updateDisplayBG(idx) {
+        const display = document.getElementById('main-display');
+        const overlay = document.getElementById('main-overlay');
+        if(teams[idx] && teams[idx].bg) {
+            display.style.backgroundImage = `url('${teams[idx].bg}')`;
+            overlay.style.display = 'block';
+        }
+    }
+    function resetDisplayBG() {
+        winnerIdx = null;
+        const display = document.getElementById('main-display');
+        const overlay = document.getElementById('main-overlay');
+        display.style.backgroundImage = 'none';
+        display.style.backgroundColor = 'white';
+        overlay.style.display = 'none';
     }
 
     document.addEventListener('keydown', (e) => {
@@ -376,21 +351,19 @@
         const map = {'1':0, '2':1, '3':2, '4':3};
         const tid = map[e.key];
         if(tid === undefined) return;
-        if(showTime) {
-            if(foulStatus[tid] === 0) { foulStatus[tid] = 2; renderGame(); }
-            return;
-        }
+        if(showTime) { if(foulStatus[tid] === 0) { foulStatus[tid] = 2; renderGame(); } return; }
         if(buzzerOn && !compOn && winnerIdx === null) {
             if(foulStatus[tid] > 0) return;
             winnerIdx = tid;
             document.getElementById('win-name').innerText = teams[winnerIdx].name;
             document.getElementById('buzzer-overlay').style.display = 'flex';
+            updateDisplayBG(winnerIdx);
             renderGame();
         }
     });
 
     function resetRound() {
-        if(!compOn) winnerIdx = null;
+        if(!compOn) resetDisplayBG();
         document.getElementById('buzzer-overlay').style.display = 'none';
         renderGame();
     }
@@ -400,17 +373,15 @@
         const ui = document.getElementById('team-setup-ui');
         ui.innerHTML = teams.map((t, i) => `
             <div class="admin-box" style="margin:0">
-                <b>隊伍 ${i+1} 名稱</b>
-                <input type="text" onchange="teams[${i}].name=this.value; saveState()" value="${t.name}">
-                <b>上傳背景 (自動壓縮)</b>
+                <b>隊伍 ${i+1} 名稱</b><input type="text" onchange="teams[${i}].name=this.value; saveState()" value="${t.name}">
                 <input type="file" onchange="upImg(event, ${i})">
-                <div style="height:40px; background:url('${t.bg}') center/cover; margin-top:5px; border-radius:4px; border:1px solid #ddd"></div>
+                <div style="height:35px; background:url('${t.bg}') center/cover; margin-top:5px; border-radius:4px; border:1px solid #ddd"></div>
             </div>`).join('');
     }
 
     function uploadQs(e) {
         const r = new FileReader();
-        r.onload = (ev) => { const d = JSON.parse(ev.target.result); questions=d; saveState(); location.reload(); };
+        r.onload = (ev) => { questions = JSON.parse(ev.target.result); saveState(); location.reload(); };
         r.readAsText(e.target.files[0]);
     }
 </script>
