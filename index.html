@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>常識問答比賽系統 - V9</title>
+    <title>常識問答比賽系統 - V10</title>
     <style>
         :root {
             --setup-color: #d35400; --admin-color: #2980b9; --game-color: #27ae60;
@@ -50,6 +50,14 @@
         }
         .q-badge { background: #57606f; color: white; padding: 6px 25px; border-radius: 30px; font-size: 16px; font-weight: bold; margin-bottom: 20px; }
         .q-text { font-size: 65px; font-weight: 800; width: 90%; margin: 0 auto 40px auto; line-height: 1.2; color: #2d3436; }
+        
+        /* 計時器樣式 (新增) */
+        #timer-display {
+            font-size: 80px; font-weight: 900; color: var(--error);
+            margin: 10px 0; display: none; animation: pulse-timer 1s infinite;
+        }
+        @keyframes pulse-timer { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
         .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; width: 90%; max-width: 1200px; }
         .opt-btn { background: #f8f9fa; border: 3px solid #dfe6e9; padding: 35px; font-size: 38px; border-radius: 20px; cursor: pointer; font-weight: bold; color: #2d3436; }
         .opt-btn.correct { background: var(--success) !important; color: white; border-color: #218c74; }
@@ -67,11 +75,8 @@
             box-sizing: border-box; border-top: 1px solid #333; width: 100%;
         }
         .controls-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-        
-        /* 修正點 1: 大幅增加左邊距，加大「比賽」按鈕與「上題」之間的距離 */
         .controls-right { display: flex; align-items: center; gap: 6px; flex-grow: 1; justify-content: flex-end; margin-left: 180px; }
         
-        /* 修正點 5: V9 標籤為白色半透明 */
         .version-label { 
             color: rgba(255, 255, 255, 0.5); 
             font-size: 14px; 
@@ -87,11 +92,9 @@
         .ctrl-btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; color: white; background: #485460; font-weight: bold; font-size: 13px; height: 38px; white-space: nowrap; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .ctrl-btn:hover { background: #5f6e7c; }
 
-        /* 修正點 2 & 3: 增加空白位置 */
-        #btn-next { margin-right: 30px; } /* 下題與答案之間 */
-        #btn-ans { margin-right: 30px; }  /* 答案與搶答之間 */
+        #btn-next { margin-right: 30px; }
+        #btn-ans { margin-right: 30px; }
         
-        /* 修正點 4: 分數輸入格維持 5px */
         .score-input { 
             width: 5px; 
             text-align: center; font-weight: 800; height: 38px; border-radius: 6px; border: none; font-size: 16px; margin: 0 !important; 
@@ -176,6 +179,9 @@
     <div class="display-area">
         <div id="g-badge" class="q-badge">準備開始</div>
         <div id="g-text" class="q-text">請點擊下方「下題」開始比賽</div>
+        
+        <div id="timer-display">20</div>
+
         <div id="g-opts" class="options-grid"></div>
         <div id="g-res"></div>
     </div>
@@ -183,7 +189,7 @@
 
 <div class="controls">
     <div class="controls-left">
-        <span class="version-label">V9</span>
+        <span class="version-label">V10</span>
         <div class="tab-group">
             <button class="nav-btn tab-setup" onclick="showTab('setup')">設定</button>
             <button class="nav-btn tab-admin" onclick="showTab('admin')">管理</button>
@@ -217,6 +223,8 @@
     let curIdx = parseInt(localStorage.getItem('qz_curIdx')) || -1;
     let selectedCat = 'compulsory';
     let winnerIdx = null, buzzerOn = false, compOn = false, answered = false, showTime = false, foulStatus = [0, 0, 0, 0];
+    // 計時器變量
+    let timerInterval;
 
     window.onload = () => { renderSetup(); renderAdmin(); showTab('game'); syncUI(); if(questions.length > 0) navQ(0); };
     function saveState() { localStorage.setItem('qz_qs', JSON.stringify(questions)); localStorage.setItem('qz_teams', JSON.stringify(teams)); localStorage.setItem('qz_curIdx', curIdx); localStorage.setItem('qz_s1', audioData.correct); localStorage.setItem('qz_s2', audioData.wrong); }
@@ -242,16 +250,21 @@
     }
     function navQ(dir) {
         if(questions.length === 0) return;
+        stopTimer(); // 換題停錶
         curIdx = Math.max(0, Math.min(questions.length - 1, curIdx + dir)); foulStatus = foulStatus.map(s => Math.max(0, s - 1)); showTime = false; answered = false;
         const q = questions[curIdx]; document.getElementById('g-badge').innerText = `${q.cat === 'compulsory' ? '必答題' : '搶答題'} | 獎+${q.ptsWin} / 罰-${q.ptsLose}`; document.getElementById('g-text').innerText = q.text; document.getElementById('g-res').style.display = 'none'; document.getElementById('pts-box').value = q.ptsWin;
         const area = document.getElementById('g-opts'); area.innerHTML = ''; area.classList.remove('locked');
         if(q.type === 'MC') { ['A','B','C','D'].forEach((l, i) => { area.innerHTML += `<button class="opt-btn" id="btn-${l}" onclick="processAns('${l}')">${l}. ${q.opts[i]}</button>`; }); }
         if(!compOn) winnerIdx = null; renderGame(); saveState();
     }
-    function showAnswer() { if(questions.length > 0) { document.getElementById('g-res').innerText = "正確解答: " + questions[curIdx].fullAns; document.getElementById('g-res').style.display = 'block'; showTime = true; } }
+    function showAnswer() { 
+        stopTimer(); // 看答案停錶
+        if(questions.length > 0) { document.getElementById('g-res').innerText = "正確解答: " + questions[curIdx].fullAns; document.getElementById('g-res').style.display = 'block'; showTime = true; } 
+    }
     function processAns(sel) {
         if(winnerIdx === null) return alert("請先選定隊伍");
         if(answered) return; answered = true;
+        stopTimer(); // 答題停錶
         const q = questions[curIdx], ok = (sel === q.ans); document.getElementById('g-opts').classList.add('locked');
         document.querySelectorAll('.opt-btn').forEach(b => { const l = b.id.split('-')[1]; if(l === q.ans) b.classList.add('correct'); else if(l === sel) b.classList.add('wrong'); });
         showAnswer(); teams[winnerIdx].score = (teams[winnerIdx].score || 0) + (ok ? q.ptsWin : -q.ptsLose); playSfx(ok ? 'correct' : 'wrong'); renderGame(); saveState();
@@ -267,18 +280,50 @@
     }
     function toggleBuzzer() { compOn = false; buzzerOn = !buzzerOn; if(buzzerOn) winnerIdx = null; syncUI(); renderGame(); }
     function toggleComp() { buzzerOn = false; compOn = !compOn; if(!compOn) winnerIdx = null; syncUI(); renderGame(); }
-    // 修正點 4: 同步搶答/必答按鈕顏色
-    function syncUI() { 
-        document.getElementById('btn-buzzer').style.background = buzzerOn ? "var(--success)" : "var(--error)"; 
-        document.getElementById('btn-comp').style.background = compOn ? "var(--success)" : "var(--error)"; 
-    }
+    function syncUI() { document.getElementById('btn-buzzer').style.background = buzzerOn ? "var(--success)" : "var(--error)"; document.getElementById('btn-comp').style.background = compOn ? "var(--success)" : "var(--error)"; }
     function manuallySelect() { winnerIdx = document.getElementById('sel-team').value === "" ? null : parseInt(document.getElementById('sel-team').value); renderGame(); }
-    function resetRound() { if(!compOn) winnerIdx = null; document.getElementById('buzzer-overlay').style.display = 'none'; renderGame(); }
-    function closeOverlay() { document.getElementById('buzzer-overlay').style.display = 'none'; }
+    
+    // --- 計時器邏輯 ---
+    function resetRound() { 
+        stopTimer(); 
+        if(!compOn) winnerIdx = null; 
+        document.getElementById('buzzer-overlay').style.display = 'none'; 
+        renderGame(); 
+    }
+    function closeOverlay() { 
+        document.getElementById('buzzer-overlay').style.display = 'none'; 
+        // 修正點 1: 關閉大畫面時啟動計時
+        startTimer();
+    }
+    function startTimer() {
+        stopTimer();
+        let timeLeft = 20;
+        const display = document.getElementById('timer-display');
+        display.innerText = timeLeft;
+        display.style.display = 'block';
+        
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            display.innerText = timeLeft;
+            if(timeLeft <= 0) {
+                clearInterval(timerInterval);
+                display.innerText = "時間到!";
+            }
+        }, 1000);
+    }
+    function stopTimer() {
+        clearInterval(timerInterval);
+        document.getElementById('timer-display').style.display = 'none';
+    }
+
     function loadAudio(e, type) { const reader = new FileReader(); reader.onload = (ev) => { audioData[type] = ev.target.result; saveState(); }; reader.readAsDataURL(e.target.files[0]); }
     function playSfx(type) { if(audioData[type]) new Audio(audioData[type]).play(); }
     document.addEventListener('keydown', (e) => {
-        if(e.code === 'Space') { resetRound(); return; }
+        if(e.code === 'Space') { 
+            if(document.getElementById('buzzer-overlay').style.display === 'flex') closeOverlay(); 
+            else resetRound(); 
+            return; 
+        }
         const tid = {'1':0, '2':1, '3':2, '4':3}[e.key]; if(tid === undefined) return;
         if(showTime) { if(foulStatus[tid] === 0) { foulStatus[tid] = 2; renderGame(); } return; }
         if(buzzerOn && !compOn && winnerIdx === null) {
@@ -291,7 +336,7 @@
     });
     function renderSetup() { const ui = document.getElementById('team-setup-ui'); ui.innerHTML = teams.map((t, i) => `<div class="admin-box" style="margin:0; padding:15px;"><b>隊伍 ${i+1} 名稱</b><input type="text" onchange="teams[${i}].name=this.value; saveState()" value="${t.name || ''}"><input type="file" onchange="upImg(event, ${i})"><div style="height:35px; background:url('${t.bg}') center/cover; margin-top:8px; border-radius:6px; border:1px solid #ddd"></div></div>`).join(''); }
     function updateUI() { document.getElementById('mc-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'block' : 'none'; document.getElementById('short-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'none' : 'block'; }
-    function downloadQsOnly() { const blob = new Blob([JSON.stringify(questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts })), null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v9_backup.json'; a.click(); }
+    function downloadQsOnly() { const blob = new Blob([JSON.stringify(questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts })), null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v10_backup.json'; a.click(); }
     function uploadQs(e) { const r = new FileReader(); r.onload = (ev) => { questions = JSON.parse(ev.target.result); curIdx = 0; saveState(); location.reload(); }; r.readAsText(e.target.files[0]); }
 </script>
 </body>
