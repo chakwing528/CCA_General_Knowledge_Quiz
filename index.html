@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>常識問答比賽系統 - V8</title>
+    <title>常識問答比賽系統 - V9</title>
     <style>
         :root {
             --setup-color: #d35400; --admin-color: #2980b9; --game-color: #27ae60;
@@ -37,7 +37,7 @@
         .winner-active { box-shadow: inset 0 0 80px var(--gold); animation: blink-gold 0.8s infinite; z-index: 5; }
         .foul-active { box-shadow: inset 0 0 80px var(--error); animation: blink-red 0.5s infinite; z-index: 5; }
         @keyframes blink-gold { 0%, 100% { background-color: rgba(249, 202, 36, 0.2); } 50% { background-color: rgba(249, 202, 36, 0.6); } }
-        @keyframes blink-red { 0%, 100% { background-color: rgba(235, 77, 75, 0.2); } 50% { background-color: rgba(235, 77, 75, 0.7); } }
+        @keyframes blink-red { 0%, 100% { background-color: rgba(194, 54, 22, 0.2); } 50% { background-color: rgba(194, 54, 22, 0.7); } }
         .team-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.3); z-index: 1; }
         .team-content { z-index: 2; text-align: center; }
         .team-name-label { font-size: 34px; font-weight: 900; margin-bottom: 5px; text-transform: uppercase; }
@@ -67,8 +67,11 @@
             box-sizing: border-box; border-top: 1px solid #333; width: 100%;
         }
         .controls-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-        .controls-right { display: flex; align-items: center; gap: 6px; flex-grow: 1; justify-content: flex-end; margin-left: 50px; }
         
+        /* 修正點 1: 大幅增加左邊距，加大「比賽」按鈕與「上題」之間的距離 */
+        .controls-right { display: flex; align-items: center; gap: 6px; flex-grow: 1; justify-content: flex-end; margin-left: 180px; }
+        
+        /* 修正點 5: V9 標籤為白色半透明 */
         .version-label { 
             color: rgba(255, 255, 255, 0.5); 
             font-size: 14px; 
@@ -83,12 +86,16 @@
 
         .ctrl-btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; color: white; background: #485460; font-weight: bold; font-size: 13px; height: 38px; white-space: nowrap; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .ctrl-btn:hover { background: #5f6e7c; }
+
+        /* 修正點 2 & 3: 增加空白位置 */
+        #btn-next { margin-right: 30px; } /* 下題與答案之間 */
+        #btn-ans { margin-right: 30px; }  /* 答案與搶答之間 */
         
-        /* 修正點 1: 分數輸入格極端收窄至 5px */
+        /* 修正點 4: 分數輸入格維持 5px */
         .score-input { 
             width: 5px; 
             text-align: center; font-weight: 800; height: 38px; border-radius: 6px; border: none; font-size: 16px; margin: 0 !important; 
-            padding-left: 0; padding-right: 0; /* 確保 5px 空間儘量留給內容 */
+            padding: 0;
         }
         .team-select { width: 125px; height: 38px; border-radius: 6px; border: none; font-weight: bold; font-size: 13px; padding: 0 5px; }
 
@@ -176,7 +183,7 @@
 
 <div class="controls">
     <div class="controls-left">
-        <span class="version-label">V8</span>
+        <span class="version-label">V9</span>
         <div class="tab-group">
             <button class="nav-btn tab-setup" onclick="showTab('setup')">設定</button>
             <button class="nav-btn tab-admin" onclick="showTab('admin')">管理</button>
@@ -185,10 +192,10 @@
     </div>
     <div class="controls-right">
         <button class="ctrl-btn" onclick="navQ(-1)">上題</button>
-        <button class="ctrl-btn" onclick="navQ(1)" style="background:var(--admin-color)">下題</button>
-        <button class="ctrl-btn" style="background:#34495e" onclick="showAnswer()">答案</button>
-        <button class="ctrl-btn" id="btn-buzzer" style="background:var(--success)" onclick="toggleBuzzer()">搶答</button>
-        <button class="ctrl-btn" id="btn-comp" style="background:var(--setup-color)" onclick="toggleComp()">必答</button>
+        <button id="btn-next" class="ctrl-btn" onclick="navQ(1)" style="background:var(--admin-color)">下題</button>
+        <button id="btn-ans" class="ctrl-btn" style="background:#34495e" onclick="showAnswer()">答案</button>
+        <button class="ctrl-btn" id="btn-buzzer" onclick="toggleBuzzer()">搶答</button>
+        <button class="ctrl-btn" id="btn-comp" onclick="toggleComp()">必答</button>
         <select id="sel-team" class="team-select" onchange="manuallySelect()"><option value="">指定隊伍...</option><option value="0">T1</option><option value="1">T2</option><option value="2">T3</option><option value="3">T4</option></select>
         <button class="ctrl-btn" onclick="resetRound()">重置</button>
         <input type="number" id="pts-box" class="score-input" value="10">
@@ -211,7 +218,7 @@
     let selectedCat = 'compulsory';
     let winnerIdx = null, buzzerOn = false, compOn = false, answered = false, showTime = false, foulStatus = [0, 0, 0, 0];
 
-    window.onload = () => { renderSetup(); renderAdmin(); showTab('game'); if(questions.length > 0) navQ(0); };
+    window.onload = () => { renderSetup(); renderAdmin(); showTab('game'); syncUI(); if(questions.length > 0) navQ(0); };
     function saveState() { localStorage.setItem('qz_qs', JSON.stringify(questions)); localStorage.setItem('qz_teams', JSON.stringify(teams)); localStorage.setItem('qz_curIdx', curIdx); localStorage.setItem('qz_s1', audioData.correct); localStorage.setItem('qz_s2', audioData.wrong); }
     function showTab(t) { document.querySelectorAll('.content-section, .nav-btn').forEach(e => e.classList.remove('active')); document.getElementById(t).classList.add('active'); document.querySelector(`.tab-${t}`).classList.add('active'); if(t === 'game') renderGame(); }
     function setQCategory(cat) { selectedCat = cat; document.getElementById('type-comp').classList.toggle('active', cat === 'compulsory'); document.getElementById('type-toss').classList.toggle('active', cat === 'tossup'); }
@@ -260,7 +267,11 @@
     }
     function toggleBuzzer() { compOn = false; buzzerOn = !buzzerOn; if(buzzerOn) winnerIdx = null; syncUI(); renderGame(); }
     function toggleComp() { buzzerOn = false; compOn = !compOn; if(!compOn) winnerIdx = null; syncUI(); renderGame(); }
-    function syncUI() { document.getElementById('btn-buzzer').style.background = buzzerOn ? "#c0392b" : "#27ae60"; document.getElementById('btn-comp').style.background = compOn ? "#c0392b" : "#d35400"; }
+    // 修正點 4: 同步搶答/必答按鈕顏色
+    function syncUI() { 
+        document.getElementById('btn-buzzer').style.background = buzzerOn ? "var(--success)" : "var(--error)"; 
+        document.getElementById('btn-comp').style.background = compOn ? "var(--success)" : "var(--error)"; 
+    }
     function manuallySelect() { winnerIdx = document.getElementById('sel-team').value === "" ? null : parseInt(document.getElementById('sel-team').value); renderGame(); }
     function resetRound() { if(!compOn) winnerIdx = null; document.getElementById('buzzer-overlay').style.display = 'none'; renderGame(); }
     function closeOverlay() { document.getElementById('buzzer-overlay').style.display = 'none'; }
@@ -280,7 +291,7 @@
     });
     function renderSetup() { const ui = document.getElementById('team-setup-ui'); ui.innerHTML = teams.map((t, i) => `<div class="admin-box" style="margin:0; padding:15px;"><b>隊伍 ${i+1} 名稱</b><input type="text" onchange="teams[${i}].name=this.value; saveState()" value="${t.name || ''}"><input type="file" onchange="upImg(event, ${i})"><div style="height:35px; background:url('${t.bg}') center/cover; margin-top:8px; border-radius:6px; border:1px solid #ddd"></div></div>`).join(''); }
     function updateUI() { document.getElementById('mc-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'block' : 'none'; document.getElementById('short-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'none' : 'block'; }
-    function downloadQsOnly() { const blob = new Blob([JSON.stringify(questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts })), null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v8_backup.json'; a.click(); }
+    function downloadQsOnly() { const blob = new Blob([JSON.stringify(questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts })), null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v9_backup.json'; a.click(); }
     function uploadQs(e) { const r = new FileReader(); r.onload = (ev) => { questions = JSON.parse(ev.target.result); curIdx = 0; saveState(); location.reload(); }; r.readAsText(e.target.files[0]); }
 </script>
 </body>
