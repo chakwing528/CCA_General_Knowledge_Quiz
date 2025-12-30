@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>常識問答比賽系統 - 版本 4</title>
+    <title>常識問答比賽系統 - 版本 5</title>
     <style>
         :root {
             --setup-color: #d35400; --admin-color: #2980b9; --game-color: #27ae60;
-            --bg: #f8f9fa; --dark: #1e272e; --error: #eb4d4b; --success: #6ab04c; --gold: #f9ca24;
+            --bg: #f8f9fa; --dark: #1e272e; --error: #c0392b; --success: #27ae60; --gold: #f1c40f;
         }
         body { font-family: 'PingFang HK', 'Helvetica Neue', Arial, sans-serif; margin: 0; background: #fff; color: var(--dark); overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
         
@@ -19,7 +19,7 @@
         .admin-box { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); margin-bottom: 25px; border: 1px solid #eee; }
         input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #dfe6e9; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
 
-        /* 題目管理介面修復 (回歸寬闊垂直佈局) */
+        /* 題目管理介面 */
         .mc-input-group { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; }
         .mc-input-item { display: flex; align-items: center; gap: 15px; background: #fdfdfd; padding: 12px 20px; border-radius: 10px; border: 1px solid #ececec; }
         .mc-input-item input[type="text"] { margin: 0; flex: 1; border-width: 1px; }
@@ -46,46 +46,73 @@
         .team-name-label { font-size: 34px; font-weight: 900; margin-bottom: 5px; text-transform: uppercase; }
         .score-val { font-size: 90px; font-weight: 900; line-height: 1; }
 
-        /* 問題區域 - 全寬 */
-        .display-area { background: white; width: 100%; flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-top: 1px solid #ddd; }
+        /* 問題區域 - 使用相對定位以便絕對定位答案框 */
+        .display-area { 
+            background: white; width: 100%; flex-grow: 1; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; text-align: center; border-top: 1px solid #ddd; 
+            position: relative; /* 為絕對定位的答案框做參照 */
+            padding-bottom: 80px; /* 預留空間給答案框，防止遮擋選項 */
+        }
         .q-badge { background: #57606f; color: white; padding: 6px 25px; border-radius: 30px; font-size: 16px; font-weight: bold; margin-bottom: 20px; }
         .q-text { font-size: 65px; font-weight: 800; width: 90%; margin: 0 auto 40px auto; line-height: 1.2; color: #2d3436; }
         .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; width: 90%; max-width: 1200px; }
         .opt-btn { background: #f8f9fa; border: 3px solid #dfe6e9; padding: 35px; font-size: 38px; border-radius: 20px; cursor: pointer; font-weight: bold; color: #2d3436; }
         .opt-btn.correct { background: var(--success) !important; color: white; border-color: #218c74; }
         .opt-btn.wrong { background: var(--error) !important; color: white; border-color: #822701; }
+        
+        /* 答案顯示框 - 改為絕對定位以防止排版跳動 (要求 4) */
+        #g-res {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 32px; color: var(--success); font-weight: 800; 
+            display: none; background: #eef9ef; padding: 10px 40px; border-radius: 50px; border: 2px solid var(--success);
+            white-space: nowrap;
+            z-index: 10;
+        }
 
-        /* 底部控制列修正 (解決 Version 4 顯示與按鈕擠壓問題) */
+        /* 底部控制列 */
         .controls { 
             background: #1e272e; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; z-index: 200; height: 75px; 
             box-sizing: border-box; border-top: 1px solid #333; width: 100%;
         }
         .controls-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
         .controls-right { display: flex; align-items: center; gap: 6px; flex-grow: 1; justify-content: flex-end; }
-        
         .version-label { color: #f9ca24; font-size: 13px; font-weight: 900; letter-spacing: 1px; border: 1px solid #444; border-radius: 5px; padding: 4px 8px; white-space: nowrap; }
-        
         .tab-group { display: flex; background: #2f3542; border-radius: 8px; padding: 3px; gap: 3px; }
-        .nav-btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 14px; font-weight: bold; background: transparent; white-space: nowrap; }
+        .nav-btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 14px; font-weight: bold; background: transparent; white-space: nowrap; transition: 0.2s; }
         .nav-btn.active { background: #57606f; }
 
-        .ctrl-btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; color: white; background: #485460; font-weight: bold; font-size: 13px; height: 38px; white-space: nowrap; display: flex; align-items: center; justify-content: center; }
-        .score-input { width: 55px; text-align: center; font-weight: 800; height: 38px; border-radius: 6px; border: none; font-size: 18px; margin: 0 !important; }
+        .ctrl-btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; color: white; background: #485460; font-weight: bold; font-size: 13px; height: 38px; white-space: nowrap; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .ctrl-btn:hover { background: #5f6e7c; }
+        /* 分數輸入欄縮細 (要求 2) */
+        .score-input { width: 50px; text-align: center; font-weight: 800; height: 38px; border-radius: 6px; border: none; font-size: 18px; margin: 0 !important; }
         .team-select { width: 125px; height: 38px; border-radius: 6px; border: none; font-weight: bold; font-size: 13px; padding: 0 5px; }
 
-        /* 搶答大彈窗 - 全螢幕背景圖 */
+        /* 搶答大彈窗 - 全螢幕背景圖 + 大字體 (要求 3) */
         #buzzer-overlay { 
             position: fixed; inset: 0; z-index: 999; display: none; 
             flex-direction: column; align-items: center; justify-content: center; 
             background-size: cover; background-position: center; background-repeat: no-repeat;
         }
-        .overlay-mask { position: absolute; inset: 0; background: rgba(0,0,0,0.3); z-index: 1; }
+        .overlay-mask { position: absolute; inset: 0; background: rgba(0,0,0,0.4); z-index: 1; }
+        .win-text { font-size: 140px; font-weight: 900; color: var(--gold); position: relative; z-index: 2; text-shadow: 0 5px 20px rgba(0,0,0,0.8); text-transform: uppercase; }
+        .win-sub { font-size: 36px; font-weight: bold; position: relative; z-index: 2; color: #fff; margin-top: -10px; text-shadow: 0 2px 5px rgba(0,0,0,0.8); }
 
-        /* 題目清單 */
-        .q-list-item { background: #fdfdfd; padding: 18px; margin-bottom: 12px; border-radius: 12px; border: 1px solid #eee; }
+        /* 題目清單與美化後的刪除按鈕 (要求 1) */
+        .q-list-item { background: #fdfdfd; padding: 18px; margin-bottom: 12px; border-radius: 12px; border: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .q-content { flex-grow: 1; }
         .cat-tag { padding: 3px 10px; border-radius: 5px; font-size: 12px; color: white; margin-right: 10px; font-weight: bold; }
         .cat-comp { background: var(--setup-color); }
         .cat-toss { background: var(--admin-color); }
+        /* 美化後的刪除按鈕 */
+        .del-btn { 
+            background: var(--error); color: white; border: none; padding: 8px 15px; 
+            border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; 
+            transition: 0.2s; white-space: nowrap; margin-left: 15px;
+        }
+        .del-btn:hover { background: #a93226; }
     </style>
 </head>
 <body>
@@ -171,13 +198,13 @@
         <div id="g-badge" class="q-badge">準備開始</div>
         <div id="g-text" class="q-text">請點擊下方「下題」開始比賽</div>
         <div id="g-opts" class="options-grid"></div>
-        <div id="g-res" style="font-size:38px; color:var(--success); font-weight:800; margin-top:20px; display:none; background:#eef9ef; padding:10px 40px; border-radius:50px; border:2px solid var(--success);"></div>
+        <div id="g-res"></div>
     </div>
 </div>
 
 <div class="controls">
     <div class="controls-left">
-        <span class="version-label">Version 4</span>
+        <span class="version-label">Version 5</span>
         <div class="tab-group">
             <button class="nav-btn tab-setup" onclick="showTab('setup')">設定</button>
             <button class="nav-btn tab-admin" onclick="showTab('admin')">管理</button>
@@ -200,6 +227,8 @@
 
 <div id="buzzer-overlay" onclick="closeOverlay()">
     <div class="overlay-mask"></div>
+    <div id="win-name" class="win-text">隊伍名稱</div>
+    <div class="win-sub">搶答成功！</div>
 </div>
 
 <script>
@@ -235,7 +264,6 @@
         document.getElementById('type-toss').classList.toggle('active', cat === 'tossup');
     }
 
-    // --- 儲存題目修復 ---
     function addQ() {
         const type = document.getElementById('q-type').value;
         const text = document.getElementById('q-input-text').value.trim();
@@ -270,13 +298,19 @@
         alert("題目儲存成功！");
     }
 
+    // 渲染題目清單 (要求 1: 美化刪除按鈕)
     function renderAdmin() {
         document.getElementById('q-list').innerHTML = questions.map((q, i) => `
             <div class="q-list-item">
-                <span class="cat-tag ${q.cat === 'compulsory' ? 'cat-comp' : 'cat-toss'}">${q.cat === 'compulsory' ? '必答' : '搶答'}</span>
-                <b>題目 ${i+1}</b> <button onclick="delQ(${i})" style="float:right; color:red; border:none; background:transparent; cursor:pointer; font-weight:bold;">[刪除]</button>
-                <div style="margin:10px 0; font-size:16px;">${q.text}</div>
-                <div style="color:var(--success); font-weight:bold;">正確答案: ${q.fullAns}</div>
+                <div class="q-content">
+                    <div>
+                        <span class="cat-tag ${q.cat === 'compulsory' ? 'cat-comp' : 'cat-toss'}">${q.cat === 'compulsory' ? '必答' : '搶答'}</span>
+                        <b>題目 ${i+1}</b>
+                    </div>
+                    <div style="margin:8px 0; font-size:16px;">${q.text}</div>
+                    <div style="color:var(--success); font-weight:bold;">正確答案: ${q.fullAns}</div>
+                </div>
+                <button class="del-btn" onclick="delQ(${i})">刪除</button>
             </div>`).join('');
     }
 
@@ -307,6 +341,7 @@
         const q = questions[curIdx];
         document.getElementById('g-badge').innerText = `${q.cat === 'compulsory' ? '必答題' : '搶答題'} | 獎+${q.ptsWin} / 罰-${q.ptsLose}`;
         document.getElementById('g-text').innerText = q.text;
+        // 隱藏答案框
         document.getElementById('g-res').style.display = 'none';
         document.getElementById('pts-box').value = q.ptsWin;
         const area = document.getElementById('g-opts');
@@ -318,7 +353,15 @@
         renderGame(); saveState();
     }
 
-    function showAnswer() { if(questions.length > 0) { document.getElementById('g-res').innerText = "正確解答: " + questions[curIdx].fullAns; document.getElementById('g-res').style.display = 'inline-block'; showTime = true; } }
+    function showAnswer() { 
+        if(questions.length > 0) { 
+            const resBox = document.getElementById('g-res');
+            resBox.innerText = "正確解答: " + questions[curIdx].fullAns; 
+            // 顯示答案框 (絕對定位)
+            resBox.style.display = 'block'; 
+            showTime = true; 
+        } 
+    }
 
     function processAns(sel) {
         if(winnerIdx === null) return alert("請先鎖定回答隊伍");
@@ -344,7 +387,6 @@
         renderGame(); saveState();
     }
 
-    // --- 圖像處理 ---
     function upImg(e, i) {
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -389,13 +431,15 @@
             if(foulStatus[tid] > 0) return;
             winnerIdx = tid;
             const overlay = document.getElementById('buzzer-overlay');
+            // 更新搶答彈窗文字 (要求 3)
+            document.getElementById('win-name').innerText = teams[winnerIdx].name || `第 ${winnerIdx+1} 隊`;
             if(teams[winnerIdx].bg) {
                 overlay.style.backgroundImage = `url('${teams[winnerIdx].bg}')`;
-                overlay.querySelector('.overlay-mask').style.background = 'transparent';
+                overlay.querySelector('.overlay-mask').style.background = 'rgba(0,0,0,0.3)'; // 有圖時遮罩淺一點
             } else {
                 overlay.style.backgroundImage = 'none';
                 overlay.style.backgroundColor = '#1e272e';
-                overlay.querySelector('.overlay-mask').style.background = 'rgba(0,0,0,0.6)';
+                overlay.querySelector('.overlay-mask').style.background = 'rgba(0,0,0,0.6)'; // 無圖時遮罩深一點
             }
             overlay.style.display = 'flex';
             renderGame();
@@ -404,7 +448,7 @@
 
     function renderSetup() {
         const ui = document.getElementById('team-setup-ui');
-        ui.innerHTML = teams.map((t, i) => `<div class="admin-box" style="margin:0; padding:15px;"><b>隊伍 ${i+1} 名稱</b><input type="text" onchange="teams[${i}].name=this.value; saveState()" value="${t.name || ''}"><input type="file" onchange="upImg(event, i)"><div style="height:35px; background:url('${t.bg}') center/cover; margin-top:8px; border-radius:6px; border:1px solid #ddd"></div></div>`).join('');
+        ui.innerHTML = teams.map((t, i) => `<div class="admin-box" style="margin:0; padding:15px;"><b>隊伍 ${i+1} 名稱</b><input type="text" onchange="teams[${i}].name=this.value; saveState()" value="${t.name || ''}"><input type="file" onchange="upImg(event, i)"><div style="height:40px; background:url('${t.bg}') center/cover; margin-top:8px; border-radius:6px; border:1px solid #ddd"></div></div>`).join('');
     }
 
     function updateUI() {
@@ -415,7 +459,7 @@
     function downloadQsOnly() {
         const exportQs = questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts }));
         const blob = new Blob([JSON.stringify(exportQs, null, 2)], {type:'application/json'});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v4_export.json'; a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v5_export.json'; a.click();
     }
     function uploadQs(e) {
         const r = new FileReader();
