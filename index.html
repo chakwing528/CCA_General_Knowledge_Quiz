@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>常識問答比賽系統 - 版本 5</title>
+    <title>常識問答比賽系統 - V6</title>
     <style>
         :root {
             --setup-color: #d35400; --admin-color: #2980b9; --game-color: #27ae60;
@@ -46,12 +46,12 @@
         .team-name-label { font-size: 34px; font-weight: 900; margin-bottom: 5px; text-transform: uppercase; }
         .score-val { font-size: 90px; font-weight: 900; line-height: 1; }
 
-        /* 問題區域 - 使用相對定位以便絕對定位答案框 */
+        /* 問題區域 */
         .display-area { 
             background: white; width: 100%; flex-grow: 1; display: flex; flex-direction: column; 
             align-items: center; justify-content: center; text-align: center; border-top: 1px solid #ddd; 
-            position: relative; /* 為絕對定位的答案框做參照 */
-            padding-bottom: 80px; /* 預留空間給答案框，防止遮擋選項 */
+            position: relative;
+            padding-bottom: 80px;
         }
         .q-badge { background: #57606f; color: white; padding: 6px 25px; border-radius: 30px; font-size: 16px; font-weight: bold; margin-bottom: 20px; }
         .q-text { font-size: 65px; font-weight: 800; width: 90%; margin: 0 auto 40px auto; line-height: 1.2; color: #2d3436; }
@@ -60,7 +60,7 @@
         .opt-btn.correct { background: var(--success) !important; color: white; border-color: #218c74; }
         .opt-btn.wrong { background: var(--error) !important; color: white; border-color: #822701; }
         
-        /* 答案顯示框 - 改為絕對定位以防止排版跳動 (要求 4) */
+        /* 答案顯示框 (絕對定位) */
         #g-res {
             position: absolute;
             bottom: 20px;
@@ -79,18 +79,32 @@
         }
         .controls-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
         .controls-right { display: flex; align-items: center; gap: 6px; flex-grow: 1; justify-content: flex-end; }
-        .version-label { color: #f9ca24; font-size: 13px; font-weight: 900; letter-spacing: 1px; border: 1px solid #444; border-radius: 5px; padding: 4px 8px; white-space: nowrap; }
+        
+        /* 版本標籤 (要求 2: 透明底，用 V6) */
+        .version-label { 
+            color: #f9ca24; 
+            font-size: 14px; 
+            font-weight: 900; 
+            white-space: nowrap; 
+            margin-right: 10px;
+            /* 移除邊框和背景，實現透明底效果 */
+        }
+
         .tab-group { display: flex; background: #2f3542; border-radius: 8px; padding: 3px; gap: 3px; }
         .nav-btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 14px; font-weight: bold; background: transparent; white-space: nowrap; transition: 0.2s; }
         .nav-btn.active { background: #57606f; }
 
         .ctrl-btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; color: white; background: #485460; font-weight: bold; font-size: 13px; height: 38px; white-space: nowrap; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .ctrl-btn:hover { background: #5f6e7c; }
-        /* 分數輸入欄縮細 (要求 2) */
-        .score-input { width: 50px; text-align: center; font-weight: 800; height: 38px; border-radius: 6px; border: none; font-size: 18px; margin: 0 !important; }
+        
+        /* 分數輸入欄 (要求 1: 收窄) */
+        .score-input { 
+            width: 40px; /* 從 50px 收窄至 40px */
+            text-align: center; font-weight: 800; height: 38px; border-radius: 6px; border: none; font-size: 18px; margin: 0 !important; 
+        }
         .team-select { width: 125px; height: 38px; border-radius: 6px; border: none; font-weight: bold; font-size: 13px; padding: 0 5px; }
 
-        /* 搶答大彈窗 - 全螢幕背景圖 + 大字體 (要求 3) */
+        /* 搶答大彈窗 */
         #buzzer-overlay { 
             position: fixed; inset: 0; z-index: 999; display: none; 
             flex-direction: column; align-items: center; justify-content: center; 
@@ -100,13 +114,12 @@
         .win-text { font-size: 140px; font-weight: 900; color: var(--gold); position: relative; z-index: 2; text-shadow: 0 5px 20px rgba(0,0,0,0.8); text-transform: uppercase; }
         .win-sub { font-size: 36px; font-weight: bold; position: relative; z-index: 2; color: #fff; margin-top: -10px; text-shadow: 0 2px 5px rgba(0,0,0,0.8); }
 
-        /* 題目清單與美化後的刪除按鈕 (要求 1) */
+        /* 題目清單 */
         .q-list-item { background: #fdfdfd; padding: 18px; margin-bottom: 12px; border-radius: 12px; border: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         .q-content { flex-grow: 1; }
         .cat-tag { padding: 3px 10px; border-radius: 5px; font-size: 12px; color: white; margin-right: 10px; font-weight: bold; }
         .cat-comp { background: var(--setup-color); }
         .cat-toss { background: var(--admin-color); }
-        /* 美化後的刪除按鈕 */
         .del-btn { 
             background: var(--error); color: white; border: none; padding: 8px 15px; 
             border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; 
@@ -204,7 +217,7 @@
 
 <div class="controls">
     <div class="controls-left">
-        <span class="version-label">Version 5</span>
+        <span class="version-label">V6</span>
         <div class="tab-group">
             <button class="nav-btn tab-setup" onclick="showTab('setup')">設定</button>
             <button class="nav-btn tab-admin" onclick="showTab('admin')">管理</button>
@@ -298,7 +311,6 @@
         alert("題目儲存成功！");
     }
 
-    // 渲染題目清單 (要求 1: 美化刪除按鈕)
     function renderAdmin() {
         document.getElementById('q-list').innerHTML = questions.map((q, i) => `
             <div class="q-list-item">
@@ -341,7 +353,6 @@
         const q = questions[curIdx];
         document.getElementById('g-badge').innerText = `${q.cat === 'compulsory' ? '必答題' : '搶答題'} | 獎+${q.ptsWin} / 罰-${q.ptsLose}`;
         document.getElementById('g-text').innerText = q.text;
-        // 隱藏答案框
         document.getElementById('g-res').style.display = 'none';
         document.getElementById('pts-box').value = q.ptsWin;
         const area = document.getElementById('g-opts');
@@ -357,7 +368,6 @@
         if(questions.length > 0) { 
             const resBox = document.getElementById('g-res');
             resBox.innerText = "正確解答: " + questions[curIdx].fullAns; 
-            // 顯示答案框 (絕對定位)
             resBox.style.display = 'block'; 
             showTime = true; 
         } 
@@ -431,15 +441,14 @@
             if(foulStatus[tid] > 0) return;
             winnerIdx = tid;
             const overlay = document.getElementById('buzzer-overlay');
-            // 更新搶答彈窗文字 (要求 3)
             document.getElementById('win-name').innerText = teams[winnerIdx].name || `第 ${winnerIdx+1} 隊`;
             if(teams[winnerIdx].bg) {
                 overlay.style.backgroundImage = `url('${teams[winnerIdx].bg}')`;
-                overlay.querySelector('.overlay-mask').style.background = 'rgba(0,0,0,0.3)'; // 有圖時遮罩淺一點
+                overlay.querySelector('.overlay-mask').style.background = 'rgba(0,0,0,0.3)';
             } else {
                 overlay.style.backgroundImage = 'none';
                 overlay.style.backgroundColor = '#1e272e';
-                overlay.querySelector('.overlay-mask').style.background = 'rgba(0,0,0,0.6)'; // 無圖時遮罩深一點
+                overlay.querySelector('.overlay-mask').style.background = 'rgba(0,0,0,0.6)';
             }
             overlay.style.display = 'flex';
             renderGame();
@@ -459,7 +468,7 @@
     function downloadQsOnly() {
         const exportQs = questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts }));
         const blob = new Blob([JSON.stringify(exportQs, null, 2)], {type:'application/json'});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v5_export.json'; a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v6_export.json'; a.click();
     }
     function uploadQs(e) {
         const r = new FileReader();
