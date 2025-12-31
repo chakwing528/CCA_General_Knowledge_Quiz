@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>常識問答比賽系統 - V15</title>
+    <title>常識問答比賽系統 - V16</title>
     <style>
         :root {
             --setup-color: #d35400; --admin-color: #2980b9; --game-color: #27ae60;
@@ -51,10 +51,18 @@
         .q-badge { background: #57606f; color: white; padding: 6px 25px; border-radius: 30px; font-size: 16px; font-weight: bold; margin-bottom: 20px; }
         .q-text { font-size: 65px; font-weight: 800; width: 80%; margin: 0 auto 40px auto; line-height: 1.2; color: #2d3436; }
         
+        /* 修正點 2: 計時器再往上移一點 */
         #timer-display {
-            position: absolute; right: 5%; top: 25%; transform: translateY(-50%);
-            font-size: 100px; font-weight: 900; color: var(--error);
-            display: none; animation: pulse-timer 1s infinite; z-index: 20;
+            position: absolute;
+            right: 5%; 
+            top: 15%; /* 修正為 15%，比 V15 更高 */
+            transform: translateY(-50%);
+            font-size: 100px; 
+            font-weight: 900; 
+            color: var(--error);
+            display: none; 
+            animation: pulse-timer 1s infinite;
+            z-index: 20;
         }
         @keyframes pulse-timer { 0% { transform: translateY(-50%) scale(1); } 50% { transform: translateY(-50%) scale(1.1); } 100% { transform: translateY(-50%) scale(1); } }
 
@@ -109,7 +117,6 @@
         .q-list-item:hover { box-shadow: 0 5px 15px rgba(0,0,0,0.1); transform: translateY(-2px); }
         .q-list-item.dragging { opacity: 0.5; background: #eef9ef; border: 2px dashed var(--admin-color); }
 
-        /* 修正點 2: 拖曳時的箭頭與位置指標 */
         .q-list-item.drag-top { border-top: 4px solid var(--gold); margin-top: 0; }
         .q-list-item.drag-bottom { border-bottom: 4px solid var(--gold); margin-bottom: 0; }
         
@@ -204,7 +211,7 @@
 
 <div class="controls">
     <div class="controls-left">
-        <span class="version-label">V15</span>
+        <span class="version-label">V16</span>
         <div class="tab-group">
             <button class="nav-btn tab-setup" onclick="showTab('setup')">設定</button>
             <button class="nav-btn tab-admin" onclick="showTab('admin')">管理</button>
@@ -228,7 +235,7 @@
 <div id="buzzer-overlay" onclick="closeOverlay()">
     <div class="overlay-mask"></div>
     <div id="win-name" class="win-text">隊伍名稱</div>
-    <div class="win-sub">搶答成功！</div>
+    <div id="win-sub" class="win-sub">搶答成功！</div>
 </div>
 
 <script>
@@ -276,7 +283,6 @@
         saveState(); renderAdmin(); document.getElementById('q-input-text').value = ""; alert("題目儲存成功！");
     }
 
-    // 修正點 1: 顯示分數
     function renderAdmin() { 
         const list = document.getElementById('q-list');
         list.innerHTML = questions.map((q, i) => `
@@ -293,7 +299,6 @@
             </div>`).join('');
     }
 
-    // 修正點 2: 拖曳箭頭視覺效果
     function dragStart(e, idx) {
         dragSrcEl = idx;
         e.target.classList.add('dragging');
@@ -306,20 +311,13 @@
         const mid = (rect.bottom - rect.top) / 2;
         const y = e.clientY - rect.top;
         
-        // 清除其他項目的樣式
         document.querySelectorAll('.q-list-item').forEach(i => i.classList.remove('drag-top', 'drag-bottom'));
 
-        if (y < mid) {
-            el.classList.add('drag-top');
-        } else {
-            el.classList.add('drag-bottom');
-        }
+        if (y < mid) { el.classList.add('drag-top'); } else { el.classList.add('drag-bottom'); }
         e.dataTransfer.dropEffect = 'move';
         return false;
     }
-    function dragLeave(e) {
-        // e.currentTarget.classList.remove('drag-top', 'drag-bottom'); // 可選，視體驗而定
-    }
+    function dragLeave(e) { }
     function dragDrop(e, targetIdx) {
         e.stopPropagation();
         const el = e.currentTarget;
@@ -328,22 +326,11 @@
 
         if (dragSrcEl !== targetIdx) {
             const item = questions.splice(dragSrcEl, 1)[0];
-            // 簡單的插入邏輯：如果是往上插，index 就是 targetIdx；如果是往下插，index 是 targetIdx (但要注意移除元素後的位移)
-            // 這裡為了簡化，直接重新計算目標位置
             let insertIndex = targetIdx;
-            // 修正拖曳邏輯：如果源頭在目標上面，且插入目標下方，索引要-1 因為源頭被拿走了。
-            // 但 splice 拿走後，陣列長度變了。
-            // 這裡使用更直觀的方法：先移除，再插入。
-            
-            // 由於已經 splice 移除了，現在 questions 少了一個元素。
-            // 如果 dragSrcEl < targetIdx，則 targetIdx 的對應元素已經往前移了一格。
             if (dragSrcEl < targetIdx) insertIndex--;
-            
-            if (!isTop) insertIndex++; // 如果是插在下方，索引+1
-            
+            if (!isTop) insertIndex++; 
             questions.splice(insertIndex, 0, item);
-            saveState();
-            renderAdmin();
+            saveState(); renderAdmin();
         }
         return false;
     }
@@ -430,6 +417,8 @@
             const teamName = teams[winnerIdx].name;
             const winText = document.getElementById('win-name');
             const winSub = document.getElementById('win-sub');
+            
+            // 修正點 1: 搶答成功彈窗邏輯
             if (teamName && teamName.trim() !== "") {
                 winText.innerText = teamName;
                 winSub.style.display = 'block';
@@ -438,6 +427,7 @@
                 winText.innerText = "搶答成功！";
                 winSub.style.display = 'none';
             }
+            
             if(teams[winnerIdx].bg) { overlay.style.backgroundImage = `url('${teams[winnerIdx].bg}')`; overlay.querySelector('.overlay-mask').style.background = 'rgba(0,0,0,0.3)'; }
             else { overlay.style.backgroundImage = 'none'; overlay.style.backgroundColor = '#1e272e'; overlay.querySelector('.overlay-mask').style.background = 'rgba(0,0,0,0.6)'; }
             overlay.style.display = 'flex'; renderGame();
@@ -445,7 +435,7 @@
     });
     function renderSetup() { const ui = document.getElementById('team-setup-ui'); ui.innerHTML = teams.map((t, i) => `<div class="admin-box" style="margin:0; padding:15px;"><b>隊伍 ${i+1} 名稱</b><input type="text" onchange="teams[${i}].name=this.value; saveState()" value="${t.name || ''}"><input type="file" onchange="upImg(event, ${i})"><div style="height:35px; background:url('${t.bg}') center/cover; margin-top:8px; border-radius:6px; border:1px solid #ddd"></div></div>`).join(''); }
     function updateUI() { document.getElementById('mc-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'block' : 'none'; document.getElementById('short-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'none' : 'block'; }
-    function downloadQsOnly() { const blob = new Blob([JSON.stringify(questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts })), null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v15_backup.json'; a.click(); }
+    function downloadQsOnly() { const blob = new Blob([JSON.stringify(questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts })), null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v16_backup.json'; a.click(); }
     function uploadQs(e) { const r = new FileReader(); r.onload = (ev) => { questions = JSON.parse(ev.target.result); curIdx = 0; saveState(); location.reload(); }; r.readAsText(e.target.files[0]); }
 </script>
 </body>
