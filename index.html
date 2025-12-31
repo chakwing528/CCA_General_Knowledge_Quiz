@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>常識問答比賽系統 - V16</title>
+    <title>常識問答比賽系統 - V17</title>
     <style>
         :root {
             --setup-color: #d35400; --admin-color: #2980b9; --game-color: #27ae60;
@@ -11,7 +11,8 @@
         }
         body { font-family: 'PingFang HK', 'Helvetica Neue', Arial, sans-serif; margin: 0; background: #fff; color: var(--dark); overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
         
-        .content-section { display: none; width: 100%; flex-grow: 1; overflow-y: auto; }
+        /* 確保內容區域填滿空間，並為下方固定的控制列留出位置 */
+        .content-section { display: none; width: 100%; flex-grow: 1; overflow-y: auto; box-sizing: border-box; }
         .content-section.active { display: flex; flex-direction: column; }
 
         .admin-container { padding: 30px; max-width: 1200px; margin: auto; width: 95%; }
@@ -51,18 +52,10 @@
         .q-badge { background: #57606f; color: white; padding: 6px 25px; border-radius: 30px; font-size: 16px; font-weight: bold; margin-bottom: 20px; }
         .q-text { font-size: 65px; font-weight: 800; width: 80%; margin: 0 auto 40px auto; line-height: 1.2; color: #2d3436; }
         
-        /* 修正點 2: 計時器再往上移一點 */
         #timer-display {
-            position: absolute;
-            right: 5%; 
-            top: 15%; /* 修正為 15%，比 V15 更高 */
-            transform: translateY(-50%);
-            font-size: 100px; 
-            font-weight: 900; 
-            color: var(--error);
-            display: none; 
-            animation: pulse-timer 1s infinite;
-            z-index: 20;
+            position: absolute; right: 5%; top: 15%; transform: translateY(-50%);
+            font-size: 100px; font-weight: 900; color: var(--error);
+            display: none; animation: pulse-timer 1s infinite; z-index: 20;
         }
         @keyframes pulse-timer { 0% { transform: translateY(-50%) scale(1); } 50% { transform: translateY(-50%) scale(1.1); } 100% { transform: translateY(-50%) scale(1); } }
 
@@ -78,9 +71,11 @@
             white-space: nowrap; z-index: 10;
         }
 
+        /* 修正點 1: 統一工具列高度 */
         .controls { 
-            background: #1e272e; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; z-index: 200; height: 75px; 
-            box-sizing: border-box; border-top: 1px solid #333; width: 100%;
+            background: #1e272e; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; z-index: 200; 
+            height: 75px; min-height: 75px; max-height: 75px; /* 強制統一高度 */
+            box-sizing: border-box; border-top: 1px solid #333; width: 100%; flex-shrink: 0;
         }
         .controls-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
         .controls-right { display: flex; align-items: center; gap: 6px; flex-grow: 1; justify-content: flex-end; margin-left: 180px; }
@@ -211,7 +206,7 @@
 
 <div class="controls">
     <div class="controls-left">
-        <span class="version-label">V16</span>
+        <span class="version-label">V17</span>
         <div class="tab-group">
             <button class="nav-btn tab-setup" onclick="showTab('setup')">設定</button>
             <button class="nav-btn tab-admin" onclick="showTab('admin')">管理</button>
@@ -268,7 +263,13 @@
         localStorage.setItem('qz_timers', JSON.stringify(timerSettings));
     }
 
-    function showTab(t) { document.querySelectorAll('.content-section, .nav-btn').forEach(e => e.classList.remove('active')); document.getElementById(t).classList.add('active'); document.querySelector(`.tab-${t}`).classList.add('active'); if(t === 'game') renderGame(); }
+    function showTab(t) { 
+        document.querySelectorAll('.content-section, .nav-btn').forEach(e => e.classList.remove('active'));
+        document.getElementById(t).classList.add('active');
+        document.querySelector(`.tab-${t}`).classList.add('active');
+        if(t === 'game') renderGame(); 
+    }
+
     function setQCategory(cat) { selectedCat = cat; document.getElementById('type-comp').classList.toggle('active', cat === 'compulsory'); document.getElementById('type-toss').classList.toggle('active', cat === 'tossup'); }
     
     function addQ() {
@@ -299,20 +300,14 @@
             </div>`).join('');
     }
 
-    function dragStart(e, idx) {
-        dragSrcEl = idx;
-        e.target.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-    }
+    function dragStart(e, idx) { dragSrcEl = idx; e.target.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
     function dragOver(e) {
         e.preventDefault();
         const el = e.currentTarget;
         const rect = el.getBoundingClientRect();
         const mid = (rect.bottom - rect.top) / 2;
         const y = e.clientY - rect.top;
-        
         document.querySelectorAll('.q-list-item').forEach(i => i.classList.remove('drag-top', 'drag-bottom'));
-
         if (y < mid) { el.classList.add('drag-top'); } else { el.classList.add('drag-bottom'); }
         e.dataTransfer.dropEffect = 'move';
         return false;
@@ -323,7 +318,6 @@
         const el = e.currentTarget;
         const isTop = el.classList.contains('drag-top');
         document.querySelectorAll('.q-list-item').forEach(i => i.classList.remove('drag-top', 'drag-bottom'));
-
         if (dragSrcEl !== targetIdx) {
             const item = questions.splice(dragSrcEl, 1)[0];
             let insertIndex = targetIdx;
@@ -334,10 +328,7 @@
         }
         return false;
     }
-    function dragEnd(e) { 
-        e.target.classList.remove('dragging'); 
-        document.querySelectorAll('.q-list-item').forEach(i => i.classList.remove('drag-top', 'drag-bottom'));
-    }
+    function dragEnd(e) { e.target.classList.remove('dragging'); document.querySelectorAll('.q-list-item').forEach(i => i.classList.remove('drag-top', 'drag-bottom')); }
 
     function delQ(i) { if(confirm("確定刪除？")) { questions.splice(i,1); saveState(); renderAdmin(); } }
     
@@ -348,25 +339,11 @@
     }
     function navQ(dir) {
         if(questions.length === 0) return;
-        stopTimer(); 
-        curIdx = Math.max(0, Math.min(questions.length - 1, curIdx + dir)); 
-        foulStatus = foulStatus.map(s => Math.max(0, s - 1)); 
-        showTime = false; answered = false;
-        
-        const q = questions[curIdx]; 
-        document.getElementById('g-badge').innerText = `${q.cat === 'compulsory' ? '必答題' : '搶答題'} | 獎+${q.ptsWin} / 罰-${q.ptsLose}`; 
-        document.getElementById('g-text').innerText = q.text; 
-        document.getElementById('g-res').style.display = 'none'; 
-        document.getElementById('pts-box').value = q.ptsWin;
-        
-        const area = document.getElementById('g-opts'); 
-        area.innerHTML = ''; area.classList.remove('locked');
+        stopTimer(); curIdx = Math.max(0, Math.min(questions.length - 1, curIdx + dir)); foulStatus = foulStatus.map(s => Math.max(0, s - 1)); showTime = false; answered = false;
+        const q = questions[curIdx]; document.getElementById('g-badge').innerText = `${q.cat === 'compulsory' ? '必答題' : '搶答題'} | 獎+${q.ptsWin} / 罰-${q.ptsLose}`; document.getElementById('g-text').innerText = q.text; document.getElementById('g-res').style.display = 'none'; document.getElementById('pts-box').value = q.ptsWin;
+        const area = document.getElementById('g-opts'); area.innerHTML = ''; area.classList.remove('locked');
         if(q.type === 'MC') { ['A','B','C','D'].forEach((l, i) => { area.innerHTML += `<button class="opt-btn" id="btn-${l}" onclick="processAns('${l}')">${l}. ${q.opts[i]}</button>`; }); }
-        
-        if(!compOn) winnerIdx = null; 
-        renderGame(); 
-        saveState();
-
+        if(!compOn) winnerIdx = null; renderGame(); saveState();
         if(q.cat === 'compulsory') startTimer(timerSettings.comp);
     }
 
@@ -390,13 +367,7 @@
     function toggleBuzzer() { compOn = false; buzzerOn = !buzzerOn; if(buzzerOn) winnerIdx = null; syncUI(); renderGame(); }
     function toggleComp() { buzzerOn = false; compOn = !compOn; if(!compOn) winnerIdx = null; syncUI(); renderGame(); }
     function syncUI() { document.getElementById('btn-buzzer').style.background = buzzerOn ? "var(--success)" : "var(--error)"; document.getElementById('btn-comp').style.background = compOn ? "var(--success)" : "var(--error)"; }
-    
-    function manuallySelect() { 
-        winnerIdx = document.getElementById('sel-team').value === "" ? null : parseInt(document.getElementById('sel-team').value); 
-        renderGame(); 
-        if(compOn && winnerIdx !== null) startTimer(timerSettings.comp);
-    }
-    
+    function manuallySelect() { winnerIdx = document.getElementById('sel-team').value === "" ? null : parseInt(document.getElementById('sel-team').value); renderGame(); if(compOn && winnerIdx !== null) startTimer(timerSettings.comp); }
     function resetRound() { stopTimer(); if(!compOn) winnerIdx = null; document.getElementById('buzzer-overlay').style.display = 'none'; renderGame(); }
     function closeOverlay() { document.getElementById('buzzer-overlay').style.display = 'none'; startTimer(timerSettings.toss); }
     function startTimer(seconds) {
@@ -407,7 +378,11 @@
 
     function loadAudio(e, type) { const reader = new FileReader(); reader.onload = (ev) => { audioData[type] = ev.target.result; saveState(); }; reader.readAsDataURL(e.target.files[0]); }
     function playSfx(type) { if(audioData[type]) new Audio(audioData[type]).play(); }
+
+    // 修正點 2: 只有在比賽介面激活時才響應搶答鍵
     document.addEventListener('keydown', (e) => {
+        if (!document.getElementById('game').classList.contains('active')) return;
+
         if(e.code === 'Space') { if(document.getElementById('buzzer-overlay').style.display === 'flex') closeOverlay(); else resetRound(); return; }
         const tid = {'1':0, '2':1, '3':2, '4':3}[e.key]; if(tid === undefined) return;
         if(showTime) { if(foulStatus[tid] === 0) { foulStatus[tid] = 2; renderGame(); } return; }
@@ -417,8 +392,6 @@
             const teamName = teams[winnerIdx].name;
             const winText = document.getElementById('win-name');
             const winSub = document.getElementById('win-sub');
-            
-            // 修正點 1: 搶答成功彈窗邏輯
             if (teamName && teamName.trim() !== "") {
                 winText.innerText = teamName;
                 winSub.style.display = 'block';
@@ -427,15 +400,15 @@
                 winText.innerText = "搶答成功！";
                 winSub.style.display = 'none';
             }
-            
             if(teams[winnerIdx].bg) { overlay.style.backgroundImage = `url('${teams[winnerIdx].bg}')`; overlay.querySelector('.overlay-mask').style.background = 'rgba(0,0,0,0.3)'; }
             else { overlay.style.backgroundImage = 'none'; overlay.style.backgroundColor = '#1e272e'; overlay.querySelector('.overlay-mask').style.background = 'rgba(0,0,0,0.6)'; }
             overlay.style.display = 'flex'; renderGame();
         }
     });
+
     function renderSetup() { const ui = document.getElementById('team-setup-ui'); ui.innerHTML = teams.map((t, i) => `<div class="admin-box" style="margin:0; padding:15px;"><b>隊伍 ${i+1} 名稱</b><input type="text" onchange="teams[${i}].name=this.value; saveState()" value="${t.name || ''}"><input type="file" onchange="upImg(event, ${i})"><div style="height:35px; background:url('${t.bg}') center/cover; margin-top:8px; border-radius:6px; border:1px solid #ddd"></div></div>`).join(''); }
     function updateUI() { document.getElementById('mc-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'block' : 'none'; document.getElementById('short-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'none' : 'block'; }
-    function downloadQsOnly() { const blob = new Blob([JSON.stringify(questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts })), null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v16_backup.json'; a.click(); }
+    function downloadQsOnly() { const blob = new Blob([JSON.stringify(questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts })), null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v17_backup.json'; a.click(); }
     function uploadQs(e) { const r = new FileReader(); r.onload = (ev) => { questions = JSON.parse(ev.target.result); curIdx = 0; saveState(); location.reload(); }; r.readAsText(e.target.files[0]); }
 </script>
 </body>
