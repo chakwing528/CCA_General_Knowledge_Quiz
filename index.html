@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>常識問答比賽系統 - V20</title>
+    <title>常識問答比賽系統 - V21</title>
     <style>
         :root {
             --setup-color: #d35400; --admin-color: #2980b9; --game-color: #27ae60;
@@ -29,13 +29,13 @@
         .type-opt { flex: 1; text-align: center; padding: 12px; border: 2px solid #dfe6e9; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .type-opt.active { border-color: var(--admin-color); background: #e3f2fd; color: var(--admin-color); }
 
-        /* 修正點 1: 強化搶答成功時的對比與犯規燈效 */
         .scoreboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 0; width: 100%; flex-shrink: 0; transition: 0.5s; }
         
-        /* 當有人搶答成功，其他未犯規的人變暗 */
-        .scoreboard.has-winner .team-card:not(.winner-active):not(.foul-active) { 
-            filter: brightness(0.2) grayscale(0.8); 
-            opacity: 0.4; 
+        /* 修正點 1: 當有人搶答成功，所有非勝出者（包括犯規隊伍）全部轉為灰色並變暗 */
+        .scoreboard.has-winner .team-card:not(.winner-active) { 
+            filter: brightness(0.2) grayscale(0.8) !important; 
+            opacity: 0.4 !important; 
+            box-shadow: none !important; /* 移除閃燈陰影 */
         }
 
         .team-card { 
@@ -45,10 +45,7 @@
         }
         .winner-active { box-shadow: inset 0 0 80px var(--gold); animation: blink-gold 0.8s infinite; z-index: 5; transform: scale(1.02); filter: none !important; opacity: 1 !important; }
         
-        /* 修正點 1: 犯規紅色閃燈（不覆蓋背景圖，排除暗色濾鏡） */
         .foul-active { 
-            filter: none !important; 
-            opacity: 1 !important; 
             z-index: 6; 
             animation: blink-foul-alarm 0.4s infinite; 
         }
@@ -82,7 +79,6 @@
         
         #g-res { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); font-size: 32px; color: var(--success); font-weight: 800; display: none; background: #eef9ef; padding: 10px 40px; border-radius: 50px; border: 2px solid var(--success); white-space: nowrap; z-index: 10; }
 
-        /* 修正點 1: 統一工具列高度 75px */
         .controls { background: #1e272e; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; z-index: 200; height: 75px; min-height: 75px; max-height: 75px; box-sizing: border-box; border-top: 1px solid #333; width: 100%; flex-shrink: 0; }
         .controls-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
         .controls-right { display: flex; align-items: center; gap: 6px; flex-grow: 1; justify-content: flex-end; margin-left: 180px; }
@@ -119,7 +115,6 @@
         .del-btn { background: var(--error); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; transition: 0.2s; white-space: nowrap; margin-left: 15px; pointer-events: auto; }
         .del-btn:hover { background: #a93226; }
         
-        /* 修正點 4: 移除圖片按鈕樣式 */
         .remove-img-btn { background: #7f8c8d; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-left: 5px; }
     </style>
 </head>
@@ -201,7 +196,7 @@
 
 <div class="controls">
     <div class="controls-left">
-        <span class="version-label">V20</span>
+        <span class="version-label">V21</span>
         <div class="tab-group">
             <button class="nav-btn tab-setup" onclick="showTab('setup')">設定</button>
             <button class="nav-btn tab-admin" onclick="showTab('admin')">管理</button>
@@ -239,52 +234,12 @@
     let winnerIdx = null, buzzerOn = false, compOn = false, answered = false, showTime = false, foulStatus = [0, 0, 0, 0];
     let timerInterval, dragSrcEl = null;
 
-    window.onload = () => { 
-        renderSetup(); renderAdmin(); showTab('game'); syncUI(); 
-        document.getElementById('time-toss').value = timerSettings.toss;
-        document.getElementById('time-comp').value = timerSettings.comp;
-        if(questions.length > 0) navQ(0); 
-    };
-
-    function saveState() {
-        localStorage.setItem('qz_qs', JSON.stringify(questions));
-        localStorage.setItem('qz_teams', JSON.stringify(teams));
-        localStorage.setItem('qz_curIdx', curIdx);
-        localStorage.setItem('qz_s1', audioData.correct);
-        localStorage.setItem('qz_s2', audioData.wrong);
-        localStorage.setItem('qz_s3', audioData.buzzer);
-        timerSettings.toss = parseInt(document.getElementById('time-toss').value) || 20;
-        timerSettings.comp = parseInt(document.getElementById('time-comp').value) || 30;
-        localStorage.setItem('qz_timers', JSON.stringify(timerSettings));
-    }
-
+    window.onload = () => { renderSetup(); renderAdmin(); showTab('game'); syncUI(); document.getElementById('time-toss').value = timerSettings.toss; document.getElementById('time-comp').value = timerSettings.comp; if(questions.length > 0) navQ(0); };
+    function saveState() { localStorage.setItem('qz_qs', JSON.stringify(questions)); localStorage.setItem('qz_teams', JSON.stringify(teams)); localStorage.setItem('qz_curIdx', curIdx); localStorage.setItem('qz_s1', audioData.correct); localStorage.setItem('qz_s2', audioData.wrong); localStorage.setItem('qz_s3', audioData.buzzer); timerSettings.toss = parseInt(document.getElementById('time-toss').value) || 20; timerSettings.comp = parseInt(document.getElementById('time-comp').value) || 30; localStorage.setItem('qz_timers', JSON.stringify(timerSettings)); }
     function showTab(t) { document.querySelectorAll('.content-section, .nav-btn').forEach(e => e.classList.remove('active')); document.getElementById(t).classList.add('active'); document.querySelector(`.tab-${t}`).classList.add('active'); if(t === 'game') renderGame(); }
     function setQCategory(cat) { selectedCat = cat; document.getElementById('type-comp').classList.toggle('active', cat === 'compulsory'); document.getElementById('type-toss').classList.toggle('active', cat === 'tossup'); }
-    function addQ() {
-        const type = document.getElementById('q-type').value, text = document.getElementById('q-input-text').value.trim();
-        if (!text) return alert("請輸入內容");
-        let ans, fullAns, opts = [];
-        if (type === 'MC') {
-            opts = [document.getElementById('oa').value, document.getElementById('ob').value, document.getElementById('oc').value, document.getElementById('od').value];
-            ans = document.querySelector('input[name="correct"]:checked').value; fullAns = `(${ans}) ${opts[ans.charCodeAt(0) - 65]}`;
-        } else { ans = document.getElementById('ans-val').value.trim() || "顯示答案"; fullAns = ans; }
-        questions.push({ type, cat: selectedCat, ptsWin: parseInt(document.getElementById('pts-win').value), ptsLose: parseInt(document.getElementById('pts-lose').value), text, ans, fullAns, opts });
-        saveState(); renderAdmin(); document.getElementById('q-input-text').value = ""; alert("題目儲存成功！");
-    }
-
-    function renderAdmin() { 
-        const list = document.getElementById('q-list');
-        list.innerHTML = questions.map((q, i) => `
-            <div class="q-list-item" draggable="true" ondragstart="dragStart(event, ${i})" ondragover="dragOver(event)" ondrop="dragDrop(event, ${i})" ondragleave="dragLeave(event)" ondragend="dragEnd(event)">
-                <div class="q-content">
-                    <div><span class="cat-tag ${q.cat === 'compulsory' ? 'cat-comp' : 'cat-toss'}">${q.cat === 'compulsory' ? '必答' : '搶答'}</span><b>題目 ${i+1}</b> <small style="color:#7f8c8d; margin-left:5px;">[獎:${q.ptsWin} / 罰:${q.ptsLose}]</small></div>
-                    <div style="margin:8px 0; font-size:16px;">${q.text}</div>
-                    <div style="color:var(--success); font-weight:bold;">答案: ${q.fullAns}</div>
-                </div>
-                <button class="del-btn" onclick="delQ(${i})">刪除</button>
-            </div>`).join('');
-    }
-
+    function addQ() { const type = document.getElementById('q-type').value, text = document.getElementById('q-input-text').value.trim(); if (!text) return alert("請輸入內容"); let ans, fullAns, opts = []; if (type === 'MC') { opts = [document.getElementById('oa').value, document.getElementById('ob').value, document.getElementById('oc').value, document.getElementById('od').value]; ans = document.querySelector('input[name="correct"]:checked').value; fullAns = `(${ans}) ${opts[ans.charCodeAt(0) - 65]}`; } else { ans = document.getElementById('ans-val').value.trim() || "顯示答案"; fullAns = ans; } questions.push({ type, cat: selectedCat, ptsWin: parseInt(document.getElementById('pts-win').value), ptsLose: parseInt(document.getElementById('pts-lose').value), text, ans, fullAns, opts }); saveState(); renderAdmin(); document.getElementById('q-input-text').value = ""; alert("題目儲存成功！"); }
+    function renderAdmin() { const list = document.getElementById('q-list'); list.innerHTML = questions.map((q, i) => `<div class="q-list-item" draggable="true" ondragstart="dragStart(event, ${i})" ondragover="dragOver(event)" ondrop="dragDrop(event, ${i})" ondragleave="dragLeave(event)" ondragend="dragEnd(event)"><div class="q-content"><div><span class="cat-tag ${q.cat === 'compulsory' ? 'cat-comp' : 'cat-toss'}">${q.cat === 'compulsory' ? '必答' : '搶答'}</span><b>題目 ${i+1}</b> <small style="color:#7f8c8d; margin-left:5px;">[獎:${q.ptsWin} / 罰:${q.ptsLose}]</small></div><div style="margin:8px 0; font-size:16px;">${q.text}</div><div style="color:var(--success); font-weight:bold;">答案: ${q.fullAns}</div></div><button class="del-btn" onclick="delQ(${i})">刪除</button></div>`).join(''); }
     function dragStart(e, i) { dragSrcEl = i; e.target.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
     function dragOver(e) { e.preventDefault(); const el = e.currentTarget, rect = el.getBoundingClientRect(), mid = (rect.bottom - rect.top) / 2, y = e.clientY - rect.top; document.querySelectorAll('.q-list-item').forEach(i => i.classList.remove('drag-top', 'drag-bottom')); if (y < mid) el.classList.add('drag-top'); else el.classList.add('drag-bottom'); e.dataTransfer.dropEffect = 'move'; return false; }
     function dragLeave(e) {}
@@ -304,31 +259,12 @@
         const sel = document.getElementById('sel-team'); teams.forEach((t, i) => { if(sel.options[i+1]) sel.options[i+1].text = (t.name ? t.name : `T${i+1}`); });
     }
 
-    function navQ(dir) {
-        if(questions.length === 0) return;
-        stopTimer(); curIdx = Math.max(0, Math.min(questions.length - 1, curIdx + dir)); foulStatus = foulStatus.map(s => Math.max(0, s - 1)); showTime = false; answered = false;
-        const q = questions[curIdx]; document.getElementById('g-badge').innerText = `${q.cat === 'compulsory' ? '必答題' : '搶答題'} | 獎+${q.ptsWin} / 罰-${q.ptsLose}`; document.getElementById('g-text').innerText = q.text; document.getElementById('g-res').style.display = 'none'; document.getElementById('pts-box').value = q.ptsWin;
-        const area = document.getElementById('g-opts'); area.innerHTML = ''; area.classList.remove('locked');
-        if(q.type === 'MC') { ['A','B','C','D'].forEach((l, i) => { area.innerHTML += `<button class="opt-btn" id="btn-${l}" onclick="processAns('${l}')">${l}. ${q.opts[i]}</button>`; }); }
-        if(!compOn) winnerIdx = null; renderGame(); saveState();
-        if(q.cat === 'compulsory') startTimer(timerSettings.comp);
-    }
-
+    function navQ(dir) { if(questions.length === 0) return; stopTimer(); curIdx = Math.max(0, Math.min(questions.length - 1, curIdx + dir)); foulStatus = foulStatus.map(s => Math.max(0, s - 1)); showTime = false; answered = false; const q = questions[curIdx]; document.getElementById('g-badge').innerText = `${q.cat === 'compulsory' ? '必答題' : '搶答題'} | 獎+${q.ptsWin} / 罰-${q.ptsLose}`; document.getElementById('g-text').innerText = q.text; document.getElementById('g-res').style.display = 'none'; document.getElementById('pts-box').value = q.ptsWin; const area = document.getElementById('g-opts'); area.innerHTML = ''; area.classList.remove('locked'); if(q.type === 'MC') { ['A','B','C','D'].forEach((l, i) => { area.innerHTML += `<button class="opt-btn" id="btn-${l}" onclick="processAns('${l}')">${l}. ${q.opts[i]}</button>`; }); } if(!compOn) winnerIdx = null; renderGame(); saveState(); if(q.cat === 'compulsory') startTimer(timerSettings.comp); }
     function showAnswer() { stopTimer(); if(questions.length > 0) { document.getElementById('g-res').innerText = "正確解答: " + questions[curIdx].fullAns; document.getElementById('g-res').style.display = 'block'; showTime = true; } }
     function processAns(sel) { if(winnerIdx === null) return alert("請先選定隊伍"); stopTimer(); if(answered) return; answered = true; const q = questions[curIdx], ok = (sel === q.ans); document.getElementById('g-opts').classList.add('locked'); document.querySelectorAll('.opt-btn').forEach(b => { const l = b.id.split('-')[1]; if(l === q.ans) b.classList.add('correct'); else if(l === sel) b.classList.add('wrong'); }); showAnswer(); teams[winnerIdx].score = (teams[winnerIdx].score || 0) + (ok ? q.ptsWin : -q.ptsLose); playSfx(ok ? 'correct' : 'wrong'); renderGame(); saveState(); }
     function manualAdj(plus) { if(winnerIdx === null) return alert("請先選定隊伍"); const val = parseInt(document.getElementById('pts-box').value); teams[winnerIdx].score = (teams[winnerIdx].score || 0) + (plus ? val : -val); playSfx(plus ? 'correct' : 'wrong'); renderGame(); saveState(); }
-    
-    function upImg(e, i) {
-        const reader = new FileReader(); reader.onload = (ev) => {
-            const img = new Image(); img.onload = () => {
-                const canvas = document.createElement('canvas'); const MAX_W = 800; let w = img.width, h = img.height; if (w > MAX_W) { h *= MAX_W/w; w = MAX_W; }
-                canvas.width = w; canvas.height = h; canvas.getContext('2d').drawImage(img, 0, 0, w, h); teams[i].bg = canvas.toDataURL('image/jpeg', 0.8); saveState(); renderSetup();
-            }; img.src = ev.target.result;
-        }; reader.readAsDataURL(e.target.files[0]);
-    }
-    // 修正點 4: 移除背景圖片功能
+    function upImg(e, i) { const reader = new FileReader(); reader.onload = (ev) => { const img = new Image(); img.onload = () => { const canvas = document.createElement('canvas'); const MAX_W = 800; let w = img.width, h = img.height; if (w > MAX_W) { h *= MAX_W/w; w = MAX_W; } canvas.width = w; canvas.height = h; canvas.getContext('2d').drawImage(img, 0, 0, w, h); teams[i].bg = canvas.toDataURL('image/jpeg', 0.8); saveState(); renderSetup(); }; img.src = ev.target.result; }; reader.readAsDataURL(e.target.files[0]); }
     function removeImg(i) { teams[i].bg = ""; saveState(); renderSetup(); }
-
     function toggleBuzzer() { compOn = false; buzzerOn = !buzzerOn; if(buzzerOn) winnerIdx = null; syncUI(); renderGame(); }
     function toggleComp() { buzzerOn = false; compOn = !compOn; if(!compOn) winnerIdx = null; syncUI(); renderGame(); }
     function syncUI() { document.getElementById('btn-buzzer').style.background = buzzerOn ? "var(--success)" : "var(--error)"; document.getElementById('btn-comp').style.background = compOn ? "var(--success)" : "var(--error)"; }
@@ -337,7 +273,6 @@
     function closeOverlay() { document.getElementById('buzzer-overlay').style.display = 'none'; startTimer(timerSettings.toss); }
     function startTimer(seconds) { stopTimer(); let timeLeft = seconds; const display = document.getElementById('timer-display'); display.innerText = timeLeft; display.style.display = 'block'; timerInterval = setInterval(() => { timeLeft--; display.innerText = timeLeft; if(timeLeft <= 0) { clearInterval(timerInterval); display.innerText = "時間到!"; } }, 1000); }
     function stopTimer() { clearInterval(timerInterval); document.getElementById('timer-display').style.display = 'none'; }
-
     function loadAudio(e, type) { const reader = new FileReader(); reader.onload = (ev) => { audioData[type] = ev.target.result; saveState(); }; reader.readAsDataURL(e.target.files[0]); }
     function playSfx(type) { if(audioData[type]) new Audio(audioData[type]).play(); }
 
@@ -357,21 +292,9 @@
         }
     });
 
-    function renderSetup() { 
-        const ui = document.getElementById('team-setup-ui'); 
-        ui.innerHTML = teams.map((t, i) => `
-            <div class="admin-box" style="margin:0; padding:15px;">
-                <b>隊伍 ${i+1} 名稱</b><input type="text" onchange="teams[${i}].name=this.value; saveState()" value="${t.name || ''}">
-                <div style="display:flex; align-items:center; gap:5px;">
-                    <input type="file" onchange="upImg(event, ${i})" style="flex:1">
-                    <button class="remove-img-btn" onclick="removeImg(${i})">移除圖片</button>
-                </div>
-                <div style="height:35px; background:url('${t.bg}') center/cover; margin-top:8px; border-radius:6px; border:1px solid #ddd"></div>
-            </div>`).join(''); 
-    }
-    
+    function renderSetup() { const ui = document.getElementById('team-setup-ui'); ui.innerHTML = teams.map((t, i) => `<div class="admin-box" style="margin:0; padding:15px;"><b>隊伍 ${i+1} 名稱</b><input type="text" onchange="teams[${i}].name=this.value; saveState()" value="${t.name || ''}"><div style="display:flex; align-items:center; gap:5px;"><input type="file" onchange="upImg(event, ${i})" style="flex:1"><button class="remove-img-btn" onclick="removeImg(${i})">移除圖片</button></div><div style="height:35px; background:url('${t.bg}') center/cover; margin-top:8px; border-radius:6px; border:1px solid #ddd"></div></div>`).join(''); }
     function updateUI() { document.getElementById('mc-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'block' : 'none'; document.getElementById('short-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'none' : 'block'; }
-    function downloadQsOnly() { const blob = new Blob([JSON.stringify(questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts })), null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v20_backup.json'; a.click(); }
+    function downloadQsOnly() { const blob = new Blob([JSON.stringify(questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts })), null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v21_backup.json'; a.click(); }
     function uploadQs(e) { const r = new FileReader(); r.onload = (ev) => { questions = JSON.parse(ev.target.result); curIdx = 0; saveState(); location.reload(); }; r.readAsText(e.target.files[0]); }
 </script>
 </body>
