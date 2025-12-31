@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>常識問答比賽系統 - V19</title>
+    <title>常識問答比賽系統 - V20</title>
     <style>
         :root {
             --setup-color: #d35400; --admin-color: #2980b9; --game-color: #27ae60;
@@ -29,27 +29,34 @@
         .type-opt { flex: 1; text-align: center; padding: 12px; border: 2px solid #dfe6e9; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .type-opt.active { border-color: var(--admin-color); background: #e3f2fd; color: var(--admin-color); }
 
+        /* 修正點 1: 強化搶答成功時的對比與犯規燈效 */
         .scoreboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 0; width: 100%; flex-shrink: 0; transition: 0.5s; }
-        .scoreboard.has-winner .team-card:not(.winner-active) { filter: brightness(0.2) grayscale(0.8); opacity: 0.4; }
+        
+        /* 當有人搶答成功，其他未犯規的人變暗 */
+        .scoreboard.has-winner .team-card:not(.winner-active):not(.foul-active) { 
+            filter: brightness(0.2) grayscale(0.8); 
+            opacity: 0.4; 
+        }
 
         .team-card { 
             height: 180px; position: relative; overflow: hidden; display: flex; flex-direction: column; 
             align-items: center; justify-content: center; color: white; text-shadow: 0 2px 10px rgba(0,0,0,0.9); 
             background-size: cover; background-position: center; background-color: #57606f; transition: 0.4s;
         }
-        .winner-active { box-shadow: inset 0 0 80px var(--gold); animation: blink-gold 0.8s infinite; z-index: 5; transform: scale(1.02); }
+        .winner-active { box-shadow: inset 0 0 80px var(--gold); animation: blink-gold 0.8s infinite; z-index: 5; transform: scale(1.02); filter: none !important; opacity: 1 !important; }
         
-        /* 修正點 2: 犯規時格仔轉為亮紅色閃燈 */
+        /* 修正點 1: 犯規紅色閃燈（不覆蓋背景圖，排除暗色濾鏡） */
         .foul-active { 
-            background-color: var(--vivid-red) !important; 
-            background-image: none !important;
-            animation: blink-foul-bg 0.4s infinite; 
-            z-index: 5; 
+            filter: none !important; 
+            opacity: 1 !important; 
+            z-index: 6; 
+            animation: blink-foul-alarm 0.4s infinite; 
         }
-        @keyframes blink-foul-bg { 
-            0%, 100% { background-color: #ff0000; } 
-            50% { background-color: #800000; } 
+        @keyframes blink-foul-alarm { 
+            0%, 100% { box-shadow: inset 0 0 120px rgba(255, 0, 0, 1); background-color: rgba(255, 0, 0, 0.2); } 
+            50% { box-shadow: inset 0 0 60px rgba(255, 0, 0, 0.6); background-color: rgba(255, 0, 0, 0.5); } 
         }
+
         @keyframes blink-gold { 0%, 100% { background-color: rgba(249, 202, 36, 0.2); } 50% { background-color: rgba(249, 202, 36, 0.6); } }
         
         .team-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.3); z-index: 1; }
@@ -62,18 +69,10 @@
             align-items: center; justify-content: center; text-align: center; border-top: 1px solid #ddd; 
             position: relative; padding-bottom: 80px;
         }
-
-        .q-badge { 
-            position: absolute; bottom: 20px; right: 20px; background: #57606f; color: white; padding: 8px 25px; 
-            border-radius: 30px; font-size: 16px; font-weight: bold; z-index: 5;
-        }
+        .q-badge { position: absolute; bottom: 20px; right: 20px; background: #57606f; color: white; padding: 8px 25px; border-radius: 30px; font-size: 16px; font-weight: bold; z-index: 5; }
         .q-text { font-size: 65px; font-weight: 800; width: 85%; margin: 0 auto 20px auto; line-height: 1.2; color: #2d3436; }
         
-        #timer-display {
-            position: absolute; right: 5%; top: 15%; transform: translateY(-50%);
-            font-size: 100px; font-weight: 900; color: var(--error);
-            display: none; animation: pulse-timer 1s infinite; z-index: 20;
-        }
+        #timer-display { position: absolute; right: 5%; top: 15%; transform: translateY(-50%); font-size: 100px; font-weight: 900; color: var(--error); display: none; animation: pulse-timer 1s infinite; z-index: 20; }
         @keyframes pulse-timer { 0% { transform: translateY(-50%) scale(1); } 50% { transform: translateY(-50%) scale(1.1); } 100% { transform: translateY(-50%) scale(1); } }
 
         .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; width: 90%; max-width: 1200px; }
@@ -81,18 +80,10 @@
         .opt-btn.correct { background: var(--success) !important; color: white; border-color: #218c74; }
         .opt-btn.wrong { background: var(--error) !important; color: white; border-color: #822701; }
         
-        #g-res {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            font-size: 32px; color: var(--success); font-weight: 800; 
-            display: none; background: #eef9ef; padding: 10px 40px; border-radius: 50px; border: 2px solid var(--success);
-            white-space: nowrap; z-index: 10;
-        }
+        #g-res { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); font-size: 32px; color: var(--success); font-weight: 800; display: none; background: #eef9ef; padding: 10px 40px; border-radius: 50px; border: 2px solid var(--success); white-space: nowrap; z-index: 10; }
 
-        .controls { 
-            background: #1e272e; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; z-index: 200; 
-            height: 75px; min-height: 75px; max-height: 75px;
-            box-sizing: border-box; border-top: 1px solid #333; width: 100%; flex-shrink: 0;
-        }
+        /* 修正點 1: 統一工具列高度 75px */
+        .controls { background: #1e272e; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; z-index: 200; height: 75px; min-height: 75px; max-height: 75px; box-sizing: border-box; border-top: 1px solid #333; width: 100%; flex-shrink: 0; }
         .controls-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
         .controls-right { display: flex; align-items: center; gap: 6px; flex-grow: 1; justify-content: flex-end; margin-left: 180px; }
         .version-label { color: rgba(255, 255, 255, 0.5); font-size: 14px; font-weight: 900; white-space: nowrap; margin-right: 10px; }
@@ -100,30 +91,20 @@
         .tab-group { display: flex; background: #2f3542; border-radius: 8px; padding: 3px; gap: 3px; }
         .nav-btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 14px; font-weight: bold; background: transparent; white-space: nowrap; transition: 0.2s; }
         .nav-btn.active { background: #57606f; }
-
         .ctrl-btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; color: white; background: #485460; font-weight: bold; font-size: 13px; height: 38px; white-space: nowrap; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .ctrl-btn:hover { background: #5f6e7c; }
 
         #btn-next { margin-right: 30px; }
         #btn-ans { margin-right: 30px; }
-        
         .score-input { width: 5px; text-align: center; font-weight: 800; height: 38px; border-radius: 6px; border: none; font-size: 16px; margin: 0 !important; padding: 0; }
         .team-select { width: 125px; height: 38px; border-radius: 6px; border: none; font-weight: bold; font-size: 13px; padding: 0 5px; }
 
-        #buzzer-overlay { 
-            position: fixed; inset: 0; z-index: 999; display: none; 
-            flex-direction: column; align-items: center; justify-content: center; 
-            background-size: cover; background-position: center; background-repeat: no-repeat;
-        }
+        #buzzer-overlay { position: fixed; inset: 0; z-index: 999; display: none; flex-direction: column; align-items: center; justify-content: center; background-size: cover; background-position: center; background-repeat: no-repeat; }
         .overlay-mask { position: absolute; inset: 0; background: rgba(0,0,0,0.4); z-index: 1; }
         .win-text { font-size: 140px; font-weight: 900; color: var(--gold); position: relative; z-index: 2; text-shadow: 0 5px 20px rgba(0,0,0,0.8); text-transform: uppercase; }
         .win-sub { font-size: 36px; font-weight: bold; position: relative; z-index: 2; color: #fff; margin-top: -10px; text-shadow: 0 2px 5px rgba(0,0,0,0.8); }
 
-        .q-list-item { 
-            background: #fdfdfd; padding: 18px; margin-bottom: 12px; border-radius: 12px; border: 1px solid #eee; 
-            display: flex; justify-content: space-between; align-items: center; 
-            cursor: move; transition: transform 0.2s, box-shadow 0.2s; position: relative;
-        }
+        .q-list-item { background: #fdfdfd; padding: 18px; margin-bottom: 12px; border-radius: 12px; border: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: move; transition: transform 0.2s, box-shadow 0.2s; position: relative; }
         .q-list-item:hover { box-shadow: 0 5px 15px rgba(0,0,0,0.1); transform: translateY(-2px); }
         .q-list-item.dragging { opacity: 0.5; background: #eef9ef; border: 2px dashed var(--admin-color); }
         .q-list-item.drag-top { border-top: 4px solid var(--gold); }
@@ -131,13 +112,15 @@
         .q-list-item.drag-top::before, .q-list-item.drag-bottom::before { content: '➤'; position: absolute; left: -25px; color: var(--gold); font-size: 20px; font-weight: bold; }
         .q-list-item.drag-top::before { top: -14px; }
         .q-list-item.drag-bottom::before { bottom: -14px; }
-
         .q-content { flex-grow: 1; pointer-events: none; }
         .cat-tag { padding: 3px 10px; border-radius: 5px; font-size: 12px; color: white; margin-right: 10px; font-weight: bold; }
         .cat-comp { background: var(--setup-color); }
         .cat-toss { background: var(--admin-color); }
         .del-btn { background: var(--error); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; transition: 0.2s; white-space: nowrap; margin-left: 15px; pointer-events: auto; }
         .del-btn:hover { background: #a93226; }
+        
+        /* 修正點 4: 移除圖片按鈕樣式 */
+        .remove-img-btn { background: #7f8c8d; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -151,9 +134,10 @@
         </div>
         <div class="admin-box">
             <h3>系統音效設定</h3>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:30px;">
                 <div><label>🟢 正確音效</label><input type="file" accept="audio/*" onchange="loadAudio(event, 'correct')"></div>
                 <div><label>🔴 錯誤音效</label><input type="file" accept="audio/*" onchange="loadAudio(event, 'wrong')"></div>
+                <div><label>🔔 搶答成功音效</label><input type="file" accept="audio/*" onchange="loadAudio(event, 'buzzer')"></div>
             </div>
         </div>
     </div>
@@ -217,7 +201,7 @@
 
 <div class="controls">
     <div class="controls-left">
-        <span class="version-label">V19</span>
+        <span class="version-label">V20</span>
         <div class="tab-group">
             <button class="nav-btn tab-setup" onclick="showTab('setup')">設定</button>
             <button class="nav-btn tab-admin" onclick="showTab('admin')">管理</button>
@@ -240,21 +224,20 @@
 
 <div id="buzzer-overlay" onclick="closeOverlay()">
     <div class="overlay-mask"></div>
-    <div id="win-name" class="win-text">隊伍名稱</div>
+    <div id="win-name" class="win-text"></div>
     <div id="win-sub" class="win-sub">搶答成功！</div>
 </div>
 
 <script>
     let questions = JSON.parse(localStorage.getItem('qz_qs')) || [];
     let teams = JSON.parse(localStorage.getItem('qz_teams')) || [{name:"",bg:"",score:0},{name:"",bg:"",score:0},{name:"",bg:"",score:0},{name:"",bg:"",score:0}];
-    let audioData = { correct: localStorage.getItem('qz_s1') || '', wrong: localStorage.getItem('qz_s2') || '' };
+    let audioData = { correct: localStorage.getItem('qz_s1') || '', wrong: localStorage.getItem('qz_s2') || '', buzzer: localStorage.getItem('qz_s3') || '' };
     let timerSettings = JSON.parse(localStorage.getItem('qz_timers')) || { toss: 20, comp: 30 };
     
     let curIdx = parseInt(localStorage.getItem('qz_curIdx')) || -1;
     let selectedCat = 'compulsory';
     let winnerIdx = null, buzzerOn = false, compOn = false, answered = false, showTime = false, foulStatus = [0, 0, 0, 0];
-    let timerInterval;
-    let dragSrcEl = null;
+    let timerInterval, dragSrcEl = null;
 
     window.onload = () => { 
         renderSetup(); renderAdmin(); showTab('game'); syncUI(); 
@@ -269,20 +252,14 @@
         localStorage.setItem('qz_curIdx', curIdx);
         localStorage.setItem('qz_s1', audioData.correct);
         localStorage.setItem('qz_s2', audioData.wrong);
+        localStorage.setItem('qz_s3', audioData.buzzer);
         timerSettings.toss = parseInt(document.getElementById('time-toss').value) || 20;
         timerSettings.comp = parseInt(document.getElementById('time-comp').value) || 30;
         localStorage.setItem('qz_timers', JSON.stringify(timerSettings));
     }
 
-    function showTab(t) { 
-        document.querySelectorAll('.content-section, .nav-btn').forEach(e => e.classList.remove('active'));
-        document.getElementById(t).classList.add('active');
-        document.querySelector(`.tab-${t}`).classList.add('active');
-        if(t === 'game') renderGame(); 
-    }
-
+    function showTab(t) { document.querySelectorAll('.content-section, .nav-btn').forEach(e => e.classList.remove('active')); document.getElementById(t).classList.add('active'); document.querySelector(`.tab-${t}`).classList.add('active'); if(t === 'game') renderGame(); }
     function setQCategory(cat) { selectedCat = cat; document.getElementById('type-comp').classList.toggle('active', cat === 'compulsory'); document.getElementById('type-toss').classList.toggle('active', cat === 'tossup'); }
-    
     function addQ() {
         const type = document.getElementById('q-type').value, text = document.getElementById('q-input-text').value.trim();
         if (!text) return alert("請輸入內容");
@@ -300,10 +277,7 @@
         list.innerHTML = questions.map((q, i) => `
             <div class="q-list-item" draggable="true" ondragstart="dragStart(event, ${i})" ondragover="dragOver(event)" ondrop="dragDrop(event, ${i})" ondragleave="dragLeave(event)" ondragend="dragEnd(event)">
                 <div class="q-content">
-                    <div>
-                        <span class="cat-tag ${q.cat === 'compulsory' ? 'cat-comp' : 'cat-toss'}">${q.cat === 'compulsory' ? '必答' : '搶答'}</span>
-                        <b>題目 ${i+1}</b> <small style="color:#7f8c8d; margin-left:5px;">[獎:${q.ptsWin} / 罰:${q.ptsLose}]</small>
-                    </div>
+                    <div><span class="cat-tag ${q.cat === 'compulsory' ? 'cat-comp' : 'cat-toss'}">${q.cat === 'compulsory' ? '必答' : '搶答'}</span><b>題目 ${i+1}</b> <small style="color:#7f8c8d; margin-left:5px;">[獎:${q.ptsWin} / 罰:${q.ptsLose}]</small></div>
                     <div style="margin:8px 0; font-size:16px;">${q.text}</div>
                     <div style="color:var(--success); font-weight:bold;">答案: ${q.fullAns}</div>
                 </div>
@@ -311,96 +285,39 @@
             </div>`).join('');
     }
 
-    function dragStart(e, idx) { dragSrcEl = idx; e.target.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
-    function dragOver(e) {
-        e.preventDefault();
-        const el = e.currentTarget;
-        const rect = el.getBoundingClientRect();
-        const mid = (rect.bottom - rect.top) / 2;
-        const y = e.clientY - rect.top;
-        document.querySelectorAll('.q-list-item').forEach(i => i.classList.remove('drag-top', 'drag-bottom'));
-        if (y < mid) { el.classList.add('drag-top'); } else { el.classList.add('drag-bottom'); }
-        e.dataTransfer.dropEffect = 'move';
-        return false;
-    }
-    function dragLeave(e) { }
-    function dragDrop(e, targetIdx) {
-        e.stopPropagation();
-        const el = e.currentTarget;
-        const isTop = el.classList.contains('drag-top');
-        document.querySelectorAll('.q-list-item').forEach(i => i.classList.remove('drag-top', 'drag-bottom'));
-        if (dragSrcEl !== targetIdx) {
-            const item = questions.splice(dragSrcEl, 1)[0];
-            let insertIndex = targetIdx;
-            if (dragSrcEl < targetIdx) insertIndex--;
-            if (!isTop) insertIndex++; 
-            questions.splice(insertIndex, 0, item);
-            saveState(); renderAdmin();
-        }
-        return false;
-    }
+    function dragStart(e, i) { dragSrcEl = i; e.target.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
+    function dragOver(e) { e.preventDefault(); const el = e.currentTarget, rect = el.getBoundingClientRect(), mid = (rect.bottom - rect.top) / 2, y = e.clientY - rect.top; document.querySelectorAll('.q-list-item').forEach(i => i.classList.remove('drag-top', 'drag-bottom')); if (y < mid) el.classList.add('drag-top'); else el.classList.add('drag-bottom'); e.dataTransfer.dropEffect = 'move'; return false; }
+    function dragLeave(e) {}
+    function dragDrop(e, targetIdx) { e.stopPropagation(); const el = e.currentTarget, isTop = el.classList.contains('drag-top'); document.querySelectorAll('.q-list-item').forEach(i => i.classList.remove('drag-top', 'drag-bottom')); if (dragSrcEl !== targetIdx) { const item = questions.splice(dragSrcEl, 1)[0]; let insertIndex = targetIdx; if (dragSrcEl < targetIdx) insertIndex--; if (!isTop) insertIndex++; questions.splice(insertIndex, 0, item); saveState(); renderAdmin(); } return false; }
     function dragEnd(e) { e.target.classList.remove('dragging'); document.querySelectorAll('.q-list-item').forEach(i => i.classList.remove('drag-top', 'drag-bottom')); }
-
     function delQ(i) { if(confirm("確定刪除？")) { questions.splice(i,1); saveState(); renderAdmin(); } }
     
     function renderGame() {
         const sb = document.getElementById('game-sb');
-        if (winnerIdx !== null) sb.classList.add('has-winner');
-        else sb.classList.remove('has-winner');
-
+        if (winnerIdx !== null) sb.classList.add('has-winner'); else sb.classList.remove('has-winner');
         sb.innerHTML = teams.map((t, i) => {
             const isWinner = (winnerIdx === i);
             const isFoul = (foulStatus[i] > 0);
             let cls = isWinner ? "winner-active" : (isFoul ? "foul-active" : "");
-            
-            return `<div class="team-card ${cls}" style="background-image:url('${t.bg}')">
-                <div class="team-overlay"></div>
-                <div class="team-content">
-                    <div class="team-name-label">${t.name || ""}</div>
-                    <div class="score-val">${t.score || 0}</div>
-                </div>
-            </div>`;
+            return `<div class="team-card ${cls}" style="background-image:url('${t.bg}')"><div class="team-overlay"></div><div class="team-content"><div class="team-name-label">${t.name || ""}</div><div class="score-val">${t.score || 0}</div></div></div>`;
         }).join('');
-
-        const sel = document.getElementById('sel-team'); 
-        teams.forEach((t, i) => { if(sel.options[i+1]) sel.options[i+1].text = (t.name ? t.name : `T${i+1}`); });
+        const sel = document.getElementById('sel-team'); teams.forEach((t, i) => { if(sel.options[i+1]) sel.options[i+1].text = (t.name ? t.name : `T${i+1}`); });
     }
 
-    // 修正點 1: 搶答題切換時確保不計時
     function navQ(dir) {
         if(questions.length === 0) return;
-        stopTimer(); // 切換題目首先停止所有計時
-        curIdx = Math.max(0, Math.min(questions.length - 1, curIdx + dir)); 
-        foulStatus = foulStatus.map(s => Math.max(0, s - 1)); 
-        showTime = false; answered = false;
-        
-        const q = questions[curIdx]; 
-        document.getElementById('g-badge').innerText = `${q.cat === 'compulsory' ? '必答題' : '搶答題'} | 獎+${q.ptsWin} / 罰-${q.ptsLose}`; 
-        document.getElementById('g-text').innerText = q.text; 
-        document.getElementById('g-res').style.display = 'none'; 
-        document.getElementById('pts-box').value = q.ptsWin;
-        
-        const area = document.getElementById('g-opts'); 
-        area.innerHTML = ''; area.classList.remove('locked');
+        stopTimer(); curIdx = Math.max(0, Math.min(questions.length - 1, curIdx + dir)); foulStatus = foulStatus.map(s => Math.max(0, s - 1)); showTime = false; answered = false;
+        const q = questions[curIdx]; document.getElementById('g-badge').innerText = `${q.cat === 'compulsory' ? '必答題' : '搶答題'} | 獎+${q.ptsWin} / 罰-${q.ptsLose}`; document.getElementById('g-text').innerText = q.text; document.getElementById('g-res').style.display = 'none'; document.getElementById('pts-box').value = q.ptsWin;
+        const area = document.getElementById('g-opts'); area.innerHTML = ''; area.classList.remove('locked');
         if(q.type === 'MC') { ['A','B','C','D'].forEach((l, i) => { area.innerHTML += `<button class="opt-btn" id="btn-${l}" onclick="processAns('${l}')">${l}. ${q.opts[i]}</button>`; }); }
-        
-        if(!compOn) winnerIdx = null; 
-        renderGame(); 
-        saveState();
-
-        // 只有必答題會自動開始計時，搶答題(cat === 'tossup')不會執行此行
+        if(!compOn) winnerIdx = null; renderGame(); saveState();
         if(q.cat === 'compulsory') startTimer(timerSettings.comp);
     }
 
     function showAnswer() { stopTimer(); if(questions.length > 0) { document.getElementById('g-res').innerText = "正確解答: " + questions[curIdx].fullAns; document.getElementById('g-res').style.display = 'block'; showTime = true; } }
-    function processAns(sel) {
-        if(winnerIdx === null) return alert("請先選定隊伍");
-        stopTimer(); if(answered) return; answered = true;
-        const q = questions[curIdx], ok = (sel === q.ans); document.getElementById('g-opts').classList.add('locked');
-        document.querySelectorAll('.opt-btn').forEach(b => { const l = b.id.split('-')[1]; if(l === q.ans) b.classList.add('correct'); else if(l === sel) b.classList.add('wrong'); });
-        showAnswer(); teams[winnerIdx].score = (teams[winnerIdx].score || 0) + (ok ? q.ptsWin : -q.ptsLose); playSfx(ok ? 'correct' : 'wrong'); renderGame(); saveState();
-    }
+    function processAns(sel) { if(winnerIdx === null) return alert("請先選定隊伍"); stopTimer(); if(answered) return; answered = true; const q = questions[curIdx], ok = (sel === q.ans); document.getElementById('g-opts').classList.add('locked'); document.querySelectorAll('.opt-btn').forEach(b => { const l = b.id.split('-')[1]; if(l === q.ans) b.classList.add('correct'); else if(l === sel) b.classList.add('wrong'); }); showAnswer(); teams[winnerIdx].score = (teams[winnerIdx].score || 0) + (ok ? q.ptsWin : -q.ptsLose); playSfx(ok ? 'correct' : 'wrong'); renderGame(); saveState(); }
     function manualAdj(plus) { if(winnerIdx === null) return alert("請先選定隊伍"); const val = parseInt(document.getElementById('pts-box').value); teams[winnerIdx].score = (teams[winnerIdx].score || 0) + (plus ? val : -val); playSfx(plus ? 'correct' : 'wrong'); renderGame(); saveState(); }
+    
     function upImg(e, i) {
         const reader = new FileReader(); reader.onload = (ev) => {
             const img = new Image(); img.onload = () => {
@@ -409,16 +326,16 @@
             }; img.src = ev.target.result;
         }; reader.readAsDataURL(e.target.files[0]);
     }
+    // 修正點 4: 移除背景圖片功能
+    function removeImg(i) { teams[i].bg = ""; saveState(); renderSetup(); }
+
     function toggleBuzzer() { compOn = false; buzzerOn = !buzzerOn; if(buzzerOn) winnerIdx = null; syncUI(); renderGame(); }
     function toggleComp() { buzzerOn = false; compOn = !compOn; if(!compOn) winnerIdx = null; syncUI(); renderGame(); }
     function syncUI() { document.getElementById('btn-buzzer').style.background = buzzerOn ? "var(--success)" : "var(--error)"; document.getElementById('btn-comp').style.background = compOn ? "var(--success)" : "var(--error)"; }
     function manuallySelect() { winnerIdx = document.getElementById('sel-team').value === "" ? null : parseInt(document.getElementById('sel-team').value); renderGame(); if(compOn && winnerIdx !== null) startTimer(timerSettings.comp); }
     function resetRound() { stopTimer(); if(!compOn) winnerIdx = null; document.getElementById('buzzer-overlay').style.display = 'none'; renderGame(); }
     function closeOverlay() { document.getElementById('buzzer-overlay').style.display = 'none'; startTimer(timerSettings.toss); }
-    function startTimer(seconds) {
-        stopTimer(); let timeLeft = seconds; const display = document.getElementById('timer-display'); display.innerText = timeLeft; display.style.display = 'block';
-        timerInterval = setInterval(() => { timeLeft--; display.innerText = timeLeft; if(timeLeft <= 0) { clearInterval(timerInterval); display.innerText = "時間到!"; } }, 1000);
-    }
+    function startTimer(seconds) { stopTimer(); let timeLeft = seconds; const display = document.getElementById('timer-display'); display.innerText = timeLeft; display.style.display = 'block'; timerInterval = setInterval(() => { timeLeft--; display.innerText = timeLeft; if(timeLeft <= 0) { clearInterval(timerInterval); display.innerText = "時間到!"; } }, 1000); }
     function stopTimer() { clearInterval(timerInterval); document.getElementById('timer-display').style.display = 'none'; }
 
     function loadAudio(e, type) { const reader = new FileReader(); reader.onload = (ev) => { audioData[type] = ev.target.result; saveState(); }; reader.readAsDataURL(e.target.files[0]); }
@@ -431,27 +348,30 @@
         if(showTime) { if(foulStatus[tid] === 0) { foulStatus[tid] = 2; renderGame(); } return; }
         if(buzzerOn && !compOn && winnerIdx === null) {
             if(foulStatus[tid] > 0) return; winnerIdx = tid;
-            const overlay = document.getElementById('buzzer-overlay'); 
-            const teamName = teams[winnerIdx].name;
-            const winText = document.getElementById('win-name');
-            const winSub = document.getElementById('win-sub');
-            if (teamName && teamName.trim() !== "") {
-                winText.innerText = teamName;
-                winSub.style.display = 'block';
-                winSub.innerText = "搶答成功！";
-            } else {
-                winText.innerText = "搶答成功！";
-                winSub.style.display = 'none';
-            }
+            const overlay = document.getElementById('buzzer-overlay'), teamName = teams[winnerIdx].name, winText = document.getElementById('win-name'), winSub = document.getElementById('win-sub');
+            if (teamName && teamName.trim() !== "") { winText.innerText = teamName; winSub.style.display = 'block'; winSub.innerText = "搶答成功！"; } 
+            else { winText.innerText = "搶答成功！"; winSub.style.display = 'none'; }
             if(teams[winnerIdx].bg) { overlay.style.backgroundImage = `url('${teams[winnerIdx].bg}')`; overlay.querySelector('.overlay-mask').style.background = 'rgba(0,0,0,0.3)'; }
             else { overlay.style.backgroundImage = 'none'; overlay.style.backgroundColor = '#1e272e'; overlay.querySelector('.overlay-mask').style.background = 'rgba(0,0,0,0.6)'; }
-            overlay.style.display = 'flex'; renderGame();
+            overlay.style.display = 'flex'; playSfx('buzzer'); renderGame();
         }
     });
 
-    function renderSetup() { const ui = document.getElementById('team-setup-ui'); ui.innerHTML = teams.map((t, i) => `<div class="admin-box" style="margin:0; padding:15px;"><b>隊伍 ${i+1} 名稱</b><input type="text" onchange="teams[${i}].name=this.value; saveState()" value="${t.name || ''}"><input type="file" onchange="upImg(event, ${i})"><div style="height:35px; background:url('${t.bg}') center/cover; margin-top:8px; border-radius:6px; border:1px solid #ddd"></div></div>`).join(''); }
+    function renderSetup() { 
+        const ui = document.getElementById('team-setup-ui'); 
+        ui.innerHTML = teams.map((t, i) => `
+            <div class="admin-box" style="margin:0; padding:15px;">
+                <b>隊伍 ${i+1} 名稱</b><input type="text" onchange="teams[${i}].name=this.value; saveState()" value="${t.name || ''}">
+                <div style="display:flex; align-items:center; gap:5px;">
+                    <input type="file" onchange="upImg(event, ${i})" style="flex:1">
+                    <button class="remove-img-btn" onclick="removeImg(${i})">移除圖片</button>
+                </div>
+                <div style="height:35px; background:url('${t.bg}') center/cover; margin-top:8px; border-radius:6px; border:1px solid #ddd"></div>
+            </div>`).join(''); 
+    }
+    
     function updateUI() { document.getElementById('mc-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'block' : 'none'; document.getElementById('short-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'none' : 'block'; }
-    function downloadQsOnly() { const blob = new Blob([JSON.stringify(questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts })), null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v19_backup.json'; a.click(); }
+    function downloadQsOnly() { const blob = new Blob([JSON.stringify(questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts })), null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v20_backup.json'; a.click(); }
     function uploadQs(e) { const r = new FileReader(); r.onload = (ev) => { questions = JSON.parse(ev.target.result); curIdx = 0; saveState(); location.reload(); }; r.readAsText(e.target.files[0]); }
 </script>
 </body>
