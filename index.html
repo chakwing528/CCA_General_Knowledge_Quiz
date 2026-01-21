@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>常識問答比賽系統 - V29</title>
+    <title>常識問答比賽系統 - V30</title>
     <style>
         :root {
             --setup-color: #d35400; --admin-color: #2980b9; --game-color: #27ae60;
@@ -176,7 +176,7 @@
 
 <div class="controls">
     <div class="controls-left">
-        <span class="version-label">V29</span>
+        <span class="version-label">V30</span>
         <div class="tab-group">
             <button class="nav-btn tab-setup" onclick="showTab('setup')">設定</button>
             <button class="nav-btn tab-admin" onclick="showTab('admin')">管理</button>
@@ -242,7 +242,7 @@
         const sel = document.getElementById('sel-team'); teams.forEach((t, i) => { if(sel.options[i+1]) sel.options[i+1].text = (t.name ? t.name : `T${i+1}`); });
     }
 
-    // 修正點 1：必答模式下鎖定隊伍 (navQ)
+    // 修正點 1：右下角標籤加入題號
     function navQ(dir) { 
         if(questions.length === 0) return; 
         stopTimer(); 
@@ -251,14 +251,15 @@
         document.getElementById('g-text').classList.add('hidden-q');
         document.getElementById('g-opts').classList.add('hidden-q');
         const q = questions[curIdx]; 
-        document.getElementById('g-badge').innerText = `${q.cat === 'compulsory' ? '必答題' : '搶答題'} | 獎+${q.ptsWin} / 罰-${q.ptsLose}`; 
+        
+        // 修正標籤內容：增加 第 X 題
+        document.getElementById('g-badge').innerText = `第 ${curIdx + 1} 題 | ${q.cat === 'compulsory' ? '必答題' : '搶答題'} | 獎+${q.ptsWin} / 罰-${q.ptsLose}`; 
+        
         document.getElementById('g-text').innerText = q.text; 
         document.getElementById('g-res').style.display = 'none'; 
         document.getElementById('pts-box').value = q.ptsWin; 
         const area = document.getElementById('g-opts'); area.innerHTML = ''; area.classList.remove('locked'); 
         if(q.type === 'MC') { ['A','B','C','D'].forEach((l, i) => { area.innerHTML += `<button class="opt-btn" id="btn-${l}" onclick="processAns('${l}')">${l}. ${q.opts[i]}</button>`; }); } 
-        
-        // 如果不是必答模式，清除選定隊伍；否則維持鎖定
         if(!compOn) winnerIdx = null; 
         renderGame(); saveState(); 
     }
@@ -270,8 +271,6 @@
     }
 
     function showAnswer() { stopTimer(); if(questions.length > 0) { showQuestionUI(); document.getElementById('g-res').innerText = "正確解答: " + questions[curIdx].fullAns; document.getElementById('g-res').style.display = 'block'; showTime = true; answered = true; document.getElementById('g-opts').classList.add('locked'); } }
-    
-    // 修正點 1：必答模式下答錯不清除選定狀態
     function processAns(sel) {
         if(winnerIdx === null) return alert("請先選定隊伍");
         if(answered) return;
@@ -290,7 +289,6 @@
             btn.classList.add('wrong');
             teams[tempWinner].score = (teams[tempWinner].score || 0) - q.ptsLose;
             playSfx('wrong');
-            // 修正：僅在非必答模式（即搶答模式）時清除選定，必答模式維持鎖定
             if(!compOn) winnerIdx = null; 
             stopTimer(); 
         }
@@ -304,16 +302,7 @@
     function toggleComp() { buzzerOn = false; compOn = !compOn; if(!compOn) winnerIdx = null; syncUI(); renderGame(); }
     function syncUI() { document.getElementById('btn-buzzer').style.background = buzzerOn ? "var(--success)" : "var(--error)"; document.getElementById('btn-comp').style.background = compOn ? "var(--success)" : "var(--error)"; }
     function manuallySelect() { winnerIdx = document.getElementById('sel-team').value === "" ? null : parseInt(document.getElementById('sel-team').value); renderGame(); if(compOn && winnerIdx !== null) { if(!document.getElementById('g-text').classList.contains('hidden-q')) startTimer(timerSettings.comp); } }
-    
-    // 修正點 1：必答模式下重置不清除選定狀態
-    function resetRound() { 
-        stopTimer(); 
-        if(!compOn) winnerIdx = null; // 僅在非必答模式重置選定
-        hasTried = [false, false, false, false]; 
-        document.getElementById('buzzer-overlay').style.display = 'none'; 
-        renderGame(); 
-    }
-
+    function resetRound() { stopTimer(); if(!compOn) winnerIdx = null; hasTried = [false, false, false, false]; document.getElementById('buzzer-overlay').style.display = 'none'; renderGame(); }
     function closeOverlay() { document.getElementById('buzzer-overlay').style.display = 'none'; renderGame(); startTimer(timerSettings.toss); }
     function startTimer(seconds) { stopTimer(); let timeLeft = seconds; const display = document.getElementById('timer-display'); display.innerText = timeLeft; display.style.display = 'block'; timerInterval = setInterval(() => { timeLeft--; display.innerText = timeLeft; if(timeLeft <= 0) { clearInterval(timerInterval); display.innerText = "時間到!"; } }, 1000); }
     function stopTimer() { clearInterval(timerInterval); document.getElementById('timer-display').style.display = 'none'; }
@@ -338,7 +327,7 @@
 
     function renderSetup() { const ui = document.getElementById('team-setup-ui'); ui.innerHTML = teams.map((t, i) => `<div class="admin-box" style="margin:0; padding:15px;"><b>隊伍 ${i+1} 名稱</b><input type="text" onchange="teams[${i}].name=this.value; saveState()" value="${t.name || ''}"><div style="display:flex; align-items:center; gap:5px;"><input type="file" onchange="upImg(event, ${i})" style="flex:1"><button class="remove-img-btn" onclick="removeImg(${i})">移除圖片</button></div><div style="height:35px; background:url('${t.bg}') center/cover; margin-top:8px; border-radius:6px; border:1px solid #ddd"></div></div>`).join(''); }
     function updateUI() { document.getElementById('mc-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'block' : 'none'; document.getElementById('short-area').style.display = (document.getElementById('q-type').value === 'MC') ? 'none' : 'block'; }
-    function downloadQsOnly() { const blob = new Blob([JSON.stringify(questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts })), null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v29_backup.json'; a.click(); }
+    function downloadQsOnly() { const blob = new Blob([JSON.stringify(questions.map(q => ({ type: q.type, cat: q.cat, ptsWin: q.ptsWin, ptsLose: q.ptsLose, text: q.text, ans: q.ans, fullAns: q.fullAns, opts: q.opts })), null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='quiz_v30_backup.json'; a.click(); }
     function uploadQs(e) { const r = new FileReader(); r.onload = (ev) => { questions = JSON.parse(ev.target.result); curIdx = 0; saveState(); location.reload(); }; r.readAsText(e.target.files[0]); }
 </script>
 </body>
